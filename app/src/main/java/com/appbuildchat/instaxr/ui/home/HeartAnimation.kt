@@ -49,7 +49,9 @@ const val TAG = "HeartModel"
 
 /**
  * Composable that renders a 3D heart model with scale animation
- * The heart appears in front of the user in XR space and auto-fades after animation
+ * The heart appears in front of the panel in XR space and auto-fades after animation
+ *
+ * IMPORTANT: This must be called INSIDE a Subspace context to be anchored to a panel
  */
 @SuppressLint("RestrictedApi")
 @Composable
@@ -67,30 +69,40 @@ fun HeartModel(
         val gltfModel = heartController.gltfModel
 
         gltfModel?.let { model ->
-            Subspace {
-                val density = LocalDensity.current
-                var scaleFromLayout by remember { mutableFloatStateOf(1f) }
+            val density = LocalDensity.current
+            var scaleFromLayout by remember { mutableFloatStateOf(1f) }
 
-                SceneCoreEntity(
-                    factory = {
-                        GltfModelEntity.create(xrSession, model)
-                    },
-                    update = { entity: GltfModelEntity ->
-                        // Optional: Start animation if available
-                        try {
-                            entity.startAnimation(loop = false)
-                        } catch (e: Exception) {
-                            // No animation available, that's okay
-                        }
-                    },
-                    sizeAdapter = SceneCoreEntitySizeAdapter(onLayoutSizeChanged = { size ->
-                        val scaleToFillLayoutHeight = Meter
-                            .fromPixel(size.height.toFloat(), density).toM() / heartHeight
-                        scaleFromLayout = scaleToFillLayoutHeight * fillRatio
-                    }),
-                    modifier = modifier.scale(scaleFromLayout)
+            // Animated scale that grows from 0.1 to 1.0 over 500ms
+            val animatedScale = remember { Animatable(0.1f) }
+            LaunchedEffect(Unit) {
+                animatedScale.animateTo(
+                    targetValue = 1.0f,
+                    animationSpec = androidx.compose.animation.core.spring(
+                        dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+                        stiffness = androidx.compose.animation.core.Spring.StiffnessMedium
+                    )
                 )
             }
+
+            SceneCoreEntity(
+                factory = {
+                    GltfModelEntity.create(xrSession, model)
+                },
+                update = { entity: GltfModelEntity ->
+                    // Optional: Start animation if available
+                    try {
+                        entity.startAnimation(loop = false)
+                    } catch (e: Exception) {
+                        // No animation available, that's okay
+                    }
+                },
+                sizeAdapter = SceneCoreEntitySizeAdapter(onLayoutSizeChanged = { size ->
+                    val scaleToFillLayoutHeight = Meter
+                        .fromPixel(size.height.toFloat(), density).toM() / heartHeight
+                    scaleFromLayout = scaleToFillLayoutHeight * fillRatio
+                }),
+                modifier = modifier.scale(scaleFromLayout * animatedScale.value)
+            )
         }
     }
 }

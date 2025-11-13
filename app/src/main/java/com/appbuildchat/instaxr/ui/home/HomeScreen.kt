@@ -236,7 +236,9 @@ internal fun HomeContent(
 @Composable
 fun HomeScreenSpatialPanelsAnimated(
     uiState: HomeUiState,
-    onAction: (HomeAction) -> Unit
+    onAction: (HomeAction) -> Unit,
+    activeHearts: List<HeartInstance> = emptyList(),
+    onRemoveHeart: (String) -> Unit = {}
 ) {
     if (uiState is HomeUiState.Success && uiState.selectedPost != null) {
         // Animate the left panel width from initial (680dp) to compact (250dp)
@@ -260,7 +262,9 @@ fun HomeScreenSpatialPanelsAnimated(
             }
         }
 
-        SpatialRow {
+        // Wrap everything in a Subspace to enable heart anchoring
+        Subspace {
+            SpatialRow {
             // Left panel - Compact posts list with animated width shrinking (height stays constant)
             SpatialPanel(
                 modifier = SubspaceModifier
@@ -400,6 +404,29 @@ fun HomeScreenSpatialPanelsAnimated(
                                 contentDescription = "Close expanded view"
                             )
                         }
+                    }
+                }
+            }
+            }
+
+            // Render heart animations INSIDE the Subspace so they're anchored to the expanded panels
+            if (activeHearts.isNotEmpty()) {
+                activeHearts.forEach { heart ->
+                    HeartModel(
+                        showHeart = true,
+                        modifier = SubspaceModifier
+                            .size(200.dp)
+                            .offset(
+                                x = heart.offsetX.dp,
+                                y = heart.offsetY.dp,
+                                z = heart.offsetZ.dp
+                            )
+                    )
+
+                    // Auto-hide heart after 3 seconds
+                    LaunchedEffect(heart.id) {
+                        kotlinx.coroutines.delay(3000)
+                        onRemoveHeart(heart.id)
                     }
                 }
             }

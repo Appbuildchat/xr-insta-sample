@@ -84,12 +84,13 @@ class HomeViewModel @Inject constructor(application: Application) : AndroidViewM
 
     private fun showHeartAnimation() {
         // Create a new heart instance with a unique ID
-        // Position: right side (400dp), slightly up (100dp), and much closer (-150dp) so it's in front
+        // Position: centered (0dp x/y), in front of panel (positive Z = towards user)
+        // Since it's now in the panel's Subspace, offsets are relative to the panel
         val newHeart = HeartInstance(
             id = UUID.randomUUID().toString(),
-            offsetX = 400f,
-            offsetY = 100f,
-            offsetZ = -150f
+            offsetX = 0f,      // Centered horizontally relative to panel
+            offsetY = 0f,      // Centered vertically relative to panel
+            offsetZ = 300f     // In front of the panel (positive Z = towards user in XR space)
         )
         _activeHearts.value = _activeHearts.value + newHeart
     }

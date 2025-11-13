@@ -128,10 +128,12 @@ fun SpatialContent(onRequestHomeSpaceMode: () -> Unit) {
     }
     // If on home with selected post, show three spatial panels
     else if (isHomeRoute && hasSelectedPost && homeViewModel != null && homeUiState != null) {
-        // EXPANDED STATE: Three separate spatial panels
+        // EXPANDED STATE: Three separate spatial panels with heart support
         com.appbuildchat.instaxr.ui.home.HomeScreenSpatialPanelsAnimated(
             uiState = homeUiState,
-            onAction = homeViewModel::handleAction
+            onAction = homeViewModel::handleAction,
+            activeHearts = activeHearts,
+            onRemoveHeart = homeViewModel::removeHeart
         )
 
         // Still show navigation orbiter
@@ -179,88 +181,91 @@ fun SpatialContent(onRequestHomeSpaceMode: () -> Unit) {
         }
     } else {
         // NORMAL STATE: Main spatial panel with navigation
-        SpatialPanel(
-        modifier = SubspaceModifier
-            .width(680.dp)
-            .height(800.dp),
-        dragPolicy = MovePolicy(isEnabled = true),
-        resizePolicy = ResizePolicy(isEnabled = true)
-    ) {
-        Surface {
-            AppNavigation(navController = navController)
-        }
-
-        // Home Space Mode Button (Top Right)
-        Orbiter(
-            position = ContentEdge.Bottom,
-            offset = 20.dp,
-            alignment = Alignment.End
-        ) {
-            HomeSpaceModeIconButton(
-                onClick = onRequestHomeSpaceMode,
-                modifier = Modifier.size(56.dp)
-            )
-        }
-
-        // Bottom Navigation Orbiter
-        Orbiter(
-            position = ContentEdge.Bottom,
-            offset = 100.dp,
-            alignment = Alignment.CenterHorizontally
-        ) {
-            Surface(
-                modifier = Modifier.clip(RoundedCornerShape(28.dp)),
-                color = MaterialTheme.colorScheme.surfaceContainer,
-                tonalElevation = 3.dp,
-                shadowElevation = 8.dp
+        // Wrap panel in Subspace to enable heart anchoring
+        androidx.xr.compose.spatial.Subspace {
+            SpatialPanel(
+                modifier = SubspaceModifier
+                    .width(680.dp)
+                    .height(800.dp),
+                dragPolicy = MovePolicy(isEnabled = true),
+                resizePolicy = ResizePolicy(isEnabled = true)
             ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                Surface {
+                    AppNavigation(navController = navController)
+                }
+
+                // Home Space Mode Button (Top Right)
+                Orbiter(
+                    position = ContentEdge.Bottom,
+                    offset = 20.dp,
+                    alignment = Alignment.End
                 ) {
-                    NavigationItem(Icons.Default.Home, "Home", currentRoute == AppRoutes.HOME) {
-                        navController.navigateSingleTopTo(AppRoutes.HOME)
-                    }
-                    NavigationItem(Icons.Default.Search, "Search", currentRoute == AppRoutes.SEARCH) {
-                        navController.navigateSingleTopTo(AppRoutes.SEARCH)
-                    }
-                    NavigationItem(Icons.Default.Add, "Add", currentRoute == AppRoutes.ADD_POST) {
-                        navController.navigateSingleTopTo(AppRoutes.ADD_POST)
-                    }
-                    NavigationItem(Icons.Default.Email, "Messages", currentRoute == AppRoutes.MESSAGES) {
-                        navController.navigateSingleTopTo(AppRoutes.MESSAGES)
-                    }
-                    NavigationItem(Icons.Default.Person, "My Page", currentRoute == AppRoutes.MY_PAGE) {
-                        navController.navigateSingleTopTo(AppRoutes.MY_PAGE)
-                    }
-                    NavigationItem(Icons.Default.Settings, "Settings", currentRoute == AppRoutes.SETTINGS) {
-                        navController.navigateSingleTopTo(AppRoutes.SETTINGS)
+                    HomeSpaceModeIconButton(
+                        onClick = onRequestHomeSpaceMode,
+                        modifier = Modifier.size(56.dp)
+                    )
+                }
+
+                // Bottom Navigation Orbiter
+                Orbiter(
+                    position = ContentEdge.Bottom,
+                    offset = 100.dp,
+                    alignment = Alignment.CenterHorizontally
+                ) {
+                    Surface(
+                        modifier = Modifier.clip(RoundedCornerShape(28.dp)),
+                        color = MaterialTheme.colorScheme.surfaceContainer,
+                        tonalElevation = 3.dp,
+                        shadowElevation = 8.dp
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            NavigationItem(Icons.Default.Home, "Home", currentRoute == AppRoutes.HOME) {
+                                navController.navigateSingleTopTo(AppRoutes.HOME)
+                            }
+                            NavigationItem(Icons.Default.Search, "Search", currentRoute == AppRoutes.SEARCH) {
+                                navController.navigateSingleTopTo(AppRoutes.SEARCH)
+                            }
+                            NavigationItem(Icons.Default.Add, "Add", currentRoute == AppRoutes.ADD_POST) {
+                                navController.navigateSingleTopTo(AppRoutes.ADD_POST)
+                            }
+                            NavigationItem(Icons.Default.Email, "Messages", currentRoute == AppRoutes.MESSAGES) {
+                                navController.navigateSingleTopTo(AppRoutes.MESSAGES)
+                            }
+                            NavigationItem(Icons.Default.Person, "My Page", currentRoute == AppRoutes.MY_PAGE) {
+                                navController.navigateSingleTopTo(AppRoutes.MY_PAGE)
+                            }
+                            NavigationItem(Icons.Default.Settings, "Settings", currentRoute == AppRoutes.SETTINGS) {
+                                navController.navigateSingleTopTo(AppRoutes.SETTINGS)
+                            }
+                        }
                     }
                 }
             }
-        }
-        }
-    }
 
-    // Render heart animations on top of everything (for both collapsed and expanded states)
-    if (isHomeRoute && activeHearts.isNotEmpty()) {
-        activeHearts.forEach { heart ->
-            com.appbuildchat.instaxr.ui.home.HeartModel(
-                showHeart = true,
-                modifier = SubspaceModifier
-                    .size(200.dp)
-                    .offset(
-                        x = heart.offsetX.dp,
-                        y = heart.offsetY.dp,
-                        z = heart.offsetZ.dp
+            // Render heart animations INSIDE the Subspace so they're anchored to the panel
+            if (isHomeRoute && activeHearts.isNotEmpty()) {
+                activeHearts.forEach { heart ->
+                    com.appbuildchat.instaxr.ui.home.HeartModel(
+                        showHeart = true,
+                        modifier = SubspaceModifier
+                            .size(200.dp)
+                            .offset(
+                                x = heart.offsetX.dp,
+                                y = heart.offsetY.dp,
+                                z = heart.offsetZ.dp
+                            )
                     )
-            )
 
-            // Auto-hide heart after 4 seconds
-            LaunchedEffect(heart.id) {
-                kotlinx.coroutines.delay(4000)
-                homeViewModel?.removeHeart(heart.id)
+                    // Auto-hide heart after 3 seconds
+                    LaunchedEffect(heart.id) {
+                        kotlinx.coroutines.delay(3000)
+                        homeViewModel?.removeHeart(heart.id)
+                    }
+                }
             }
         }
     }
