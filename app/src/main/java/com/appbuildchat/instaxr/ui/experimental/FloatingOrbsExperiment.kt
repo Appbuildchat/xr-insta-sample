@@ -30,7 +30,6 @@ import androidx.xr.compose.subspace.layout.height
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import coil3.size.Size
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
@@ -141,17 +140,25 @@ private fun FloatingOrb(
                 modifier = Modifier.fillMaxSize(),
                 shape = CircleShape
             ) {
-                // Circular profile image
+                // Get drawable resource ID from the profileImage filename
+                val drawableResId = remember(profileImage) {
+                    context.resources.getIdentifier(
+                        profileImage.removeSuffix(".jpg"),
+                        "drawable",
+                        context.packageName
+                    )
+                }
+
+                // Load image from drawable resources
                 AsyncImage(
                     model = ImageRequest.Builder(context)
-                        .data("file:///android_asset/mock_data/$profileImage")
+                        .data(drawableResId)
                         .crossfade(true)
-                        .size(Size.ORIGINAL)
                         .build(),
-                    contentDescription = "Floating profile orb",
+                    contentDescription = "Floating profile orb $profileImage",
                     modifier = Modifier
                         .fillMaxSize()
-                        .border(4.dp, Color.White.copy(alpha = 0.8f), CircleShape),
+                        .border(4.dp, Color.White.copy(alpha = 0.9f), CircleShape),
                     contentScale = ContentScale.Crop
                 )
             }
