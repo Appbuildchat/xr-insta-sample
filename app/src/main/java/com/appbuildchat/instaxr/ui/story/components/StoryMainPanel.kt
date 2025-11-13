@@ -66,7 +66,7 @@ fun StoryMainPanel(
         ) {
             Icon(
                 imageVector = Icons.Default.Close,
-                contentDescription = "Close current story"
+                contentDescription = "Close story"
             )
         }
     }
