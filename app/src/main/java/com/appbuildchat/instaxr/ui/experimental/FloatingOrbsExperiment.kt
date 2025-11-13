@@ -2,14 +2,31 @@ package com.appbuildchat.instaxr.ui.experimental
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -40,30 +57,53 @@ import kotlin.random.Random
  * - Orbs positioned randomly in a 180° arc in front of user
  * - Distance: 1-2 meters from user
  * - Each orb continuously floats up and down
- * - Uses SpatialBox with move() and rotate() modifiers for 3D positioning
+ * - Tap orb to show story panel with user's post
  */
 @Composable
 fun FloatingOrbsExperiment(
     modifier: Modifier = Modifier
 ) {
+    // State for selected orb (to show story panel)
+    var selectedOrbIndex by remember { mutableStateOf<Int?>(null) }
+
     // Create floating orbs for each user profile
     val profileImages = listOf(
         "profile_1.jpg",
         "profile_2.jpg",
         "profile_3.jpg",
         "profile_4.jpg",
-        "profile_5.jpg",
         "profile_6.jpg",
         "profile_7.jpg"
     )
 
+    // Map profile to post images
+    val postImages = listOf(
+        "post_1.jpg",
+        "post_2.jpg",
+        "post_3.jpg",
+        "post_4.jpg",
+        "post_6.jpg",
+        "post_7.jpg"
+    )
+
     // Wrap in Subspace to create spatial context
     Subspace {
+        // Show floating orbs
         profileImages.forEachIndexed { index, profileImage ->
             FloatingOrb(
                 profileImage = profileImage,
                 index = index,
-                totalCount = profileImages.size
+                totalCount = profileImages.size,
+                onClick = { selectedOrbIndex = index }
+            )
+        }
+
+        // Show story panel if an orb is selected
+        selectedOrbIndex?.let { index ->
+            StoryPanel(
+                postImage = postImages[index],
+                profileImage = profileImages[index],
+                onClose = { selectedOrbIndex = null }
             )
         }
     }
@@ -76,7 +116,8 @@ fun FloatingOrbsExperiment(
 private fun FloatingOrb(
     profileImage: String,
     index: Int,
-    totalCount: Int
+    totalCount: Int,
+    onClick: () -> Unit
 ) {
     val context = LocalContext.current
 
@@ -132,7 +173,9 @@ private fun FloatingOrb(
         resizePolicy = ResizePolicy(isEnabled = false)
     ) {
         Surface(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .clickable(onClick = onClick),
             shape = CircleShape
         ) {
             // Get drawable resource ID from the profileImage filename
@@ -211,4 +254,106 @@ private fun generateRandomOrbPosition(index: Int, totalCount: Int): OrbPosition 
         animationDuration = animationDuration,
         rotationDuration = rotationDuration
     )
+}
+
+/**
+ * Story panel that appears when an orb is tapped
+ * Shows the user's post image in a centered panel
+ */
+@Composable
+private fun StoryPanel(
+    postImage: String,
+    profileImage: String,
+    onClose: () -> Unit
+) {
+    val context = LocalContext.current
+
+    // Create centered BIG panel in front of user
+    SpatialPanel(
+        modifier = SubspaceModifier
+            .width(600.dp)
+            .height(1000.dp)
+            .offset(x = 0.dp, y = 0.dp, z = -1500.dp), // Center, 1.5m in front
+        dragPolicy = MovePolicy(isEnabled = true),
+        resizePolicy = ResizePolicy(isEnabled = false)
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 8.dp
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Header with profile and close button
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Profile image - BIGGER
+                    val profileResId = remember(profileImage) {
+                        context.resources.getIdentifier(
+                            profileImage.removeSuffix(".jpg"),
+                            "drawable",
+                            context.packageName
+                        )
+                    }
+
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(profileResId)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = "Profile",
+                        modifier = Modifier
+                            .size(60.dp)
+                            .clip(CircleShape)
+                            .border(3.dp, MaterialTheme.colorScheme.primary, CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+
+                    Spacer(modifier = Modifier.width(16.dp))
+
+                    Text(
+                        text = "Story",
+                        style = MaterialTheme.typography.headlineSmall,
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    // Close button - BIGGER
+                    IconButton(
+                        onClick = onClose,
+                        modifier = Modifier.size(56.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Close",
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+                }
+
+                // Post image (story content)
+                val postResId = remember(postImage) {
+                    context.resources.getIdentifier(
+                        postImage.removeSuffix(".jpg"),
+                        "drawable",
+                        context.packageName
+                    )
+                }
+
+                AsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(postResId)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = "Story post",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    contentScale = ContentScale.Crop
+                )
+            }
+        }
+    }
 }
