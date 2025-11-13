@@ -1,14 +1,18 @@
 package com.appbuildchat.instaxr.ui
 
+import androidx.activity.ComponentActivity
 import androidx.compose.runtime.Composable
+import androidx.activity.compose.LocalActivity
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.appbuildchat.instaxr.ui.home.HomeScreen
 import com.appbuildchat.instaxr.ui.messages.MessagesScreen
 import com.appbuildchat.instaxr.ui.profile.ProfileScreen
+import com.appbuildchat.instaxr.ui.profile.ProfileViewModel
 import com.appbuildchat.instaxr.ui.reels.ReelsScreen
 import com.appbuildchat.instaxr.ui.reels.dome.ReelsDomeScreen
 import com.appbuildchat.instaxr.ui.search.SearchScreen
@@ -68,7 +72,10 @@ fun AppNavigation(
 
         // My Page (Profile) Screen
         composable(route = AppRoutes.MY_PAGE) {
-            ProfileScreen()
+            val activity = LocalActivity.current as? ComponentActivity
+                ?: error("ProfileScreen requires an activity context")
+            val profileViewModel: ProfileViewModel = viewModel(viewModelStoreOwner = activity)
+            ProfileScreen(viewModel = profileViewModel)
         }
 
         // Search Screen
