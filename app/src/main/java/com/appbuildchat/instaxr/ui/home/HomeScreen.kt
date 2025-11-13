@@ -46,12 +46,16 @@ import androidx.xr.compose.subspace.layout.SubspaceModifier
 import androidx.xr.compose.subspace.layout.height
 import androidx.xr.compose.subspace.layout.width
 import androidx.xr.compose.subspace.layout.fillMaxHeight
+import androidx.xr.compose.subspace.layout.fillMaxSize
+import androidx.xr.compose.subspace.layout.offset
+import androidx.xr.compose.subspace.layout.size
 import androidx.xr.compose.subspace.MovePolicy
 import androidx.xr.compose.subspace.ResizePolicy
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.appbuildchat.instaxr.data.model.Post
+import kotlinx.coroutines.delay
 
 /**
  * Top-level composable for the Home feature screen

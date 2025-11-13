@@ -35,8 +35,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import kotlinx.coroutines.delay
+import androidx.xr.compose.platform.LocalSession
 import androidx.xr.compose.platform.LocalSpatialCapabilities
 import androidx.xr.compose.platform.LocalSpatialConfiguration
 import androidx.xr.compose.spatial.ApplicationSubspace
@@ -48,6 +51,8 @@ import androidx.xr.compose.subspace.SpatialPanel
 import androidx.xr.compose.subspace.layout.SubspaceModifier
 import androidx.xr.compose.subspace.layout.height
 import androidx.xr.compose.subspace.layout.width
+import androidx.xr.compose.subspace.layout.size
+import androidx.xr.compose.subspace.layout.offset
 
 /**
  * Main InstaXR App composable
@@ -99,6 +104,9 @@ fun SpatialContent(onRequestHomeSpaceMode: () -> Unit) {
 
     val homeUiState = homeViewModel?.uiState?.collectAsState()?.value
     val hasSelectedPost = (homeUiState as? com.appbuildchat.instaxr.ui.home.HomeUiState.Success)?.selectedPost != null
+
+    // Collect active hearts from HomeViewModel for rendering
+    val activeHearts = homeViewModel?.activeHearts?.collectAsStateWithLifecycle()?.value ?: emptyList()
 
     // If on floating orbs route, show the experiment directly
     if (isFloatingOrbsRoute) {
@@ -232,6 +240,28 @@ fun SpatialContent(onRequestHomeSpaceMode: () -> Unit) {
                 }
             }
         }
+        }
+    }
+
+    // Render heart animations on top of everything (for both collapsed and expanded states)
+    if (isHomeRoute && activeHearts.isNotEmpty()) {
+        activeHearts.forEach { heart ->
+            com.appbuildchat.instaxr.ui.home.HeartModel(
+                showHeart = true,
+                modifier = SubspaceModifier
+                    .size(200.dp)
+                    .offset(
+                        x = heart.offsetX.dp,
+                        y = heart.offsetY.dp,
+                        z = heart.offsetZ.dp
+                    )
+            )
+
+            // Auto-hide heart after 4 seconds
+            LaunchedEffect(heart.id) {
+                kotlinx.coroutines.delay(4000)
+                homeViewModel?.removeHeart(heart.id)
+            }
         }
     }
 }

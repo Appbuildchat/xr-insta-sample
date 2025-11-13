@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.util.UUID
 import javax.inject.Inject
 
 /**
@@ -21,6 +22,9 @@ class HomeViewModel @Inject constructor(application: Application) : AndroidViewM
 
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+
+    private val _activeHearts = MutableStateFlow<List<HeartInstance>>(emptyList())
+    val activeHearts: StateFlow<List<HeartInstance>> = _activeHearts.asStateFlow()
 
     init {
         loadHomeFeed()
@@ -53,10 +57,18 @@ class HomeViewModel @Inject constructor(application: Application) : AndroidViewM
         if (currentState is HomeUiState.Success) {
             val updatedPosts = currentState.posts.map { post ->
                 if (post.id == postId) {
-                    post.copy(
+                    val wasLiked = post.isLiked
+                    val newPost = post.copy(
                         isLiked = !post.isLiked,
                         likeCount = if (post.isLiked) post.likeCount - 1 else post.likeCount + 1
                     )
+
+                    // Show heart animation when liking (not when unliking)
+                    if (!wasLiked) {
+                        showHeartAnimation()
+                    }
+
+                    newPost
                 } else {
                     post
                 }
@@ -66,8 +78,24 @@ class HomeViewModel @Inject constructor(application: Application) : AndroidViewM
             } else {
                 currentState.selectedPost
             }
-            _uiState.value = HomeUiState.Success(updatedPosts, updatedSelectedPost)
+            _uiState.value = HomeUiState.Success(updatedPosts, updatedSelectedPost, currentState.expandedForComments)
         }
+    }
+
+    private fun showHeartAnimation() {
+        // Create a new heart instance with a unique ID
+        // Position: right side (400dp), slightly up (100dp), and much closer (-150dp) so it's in front
+        val newHeart = HeartInstance(
+            id = UUID.randomUUID().toString(),
+            offsetX = 400f,
+            offsetY = 100f,
+            offsetZ = -150f
+        )
+        _activeHearts.value = _activeHearts.value + newHeart
+    }
+
+    fun removeHeart(heartId: String) {
+        _activeHearts.value = _activeHearts.value.filter { it.id != heartId }
     }
 
     private fun selectPost(postId: String, expandedForComments: Boolean) {
