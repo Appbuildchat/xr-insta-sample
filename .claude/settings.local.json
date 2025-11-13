@@ -12,7 +12,11 @@
       "Bash(adb shell am start:*)",
       "Bash(adb shell am:*)",
       "Bash(adb shell:*)",
-      "Bash(adb:*)"
+      "Bash(adb:*)",
+      "Bash(java:*)",
+      "Bash(~/Library/Android/sdk/platform-tools/adb install:*)",
+      "Bash(~/Library/Android/sdk/platform-tools/adb uninstall com.appbuildchat.instaxr)",
+      "Bash(~/Library/Android/sdk/platform-tools/adb shell am start -n com.appbuildchat.instaxr/.MainActivity)"
     ],
     "deny": [],
     "ask": []
