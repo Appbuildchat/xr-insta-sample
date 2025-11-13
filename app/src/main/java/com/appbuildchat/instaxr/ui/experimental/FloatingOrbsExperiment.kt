@@ -18,7 +18,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.xr.compose.spatial.Subspace
-import androidx.xr.compose.subspace.SpatialBox
 import androidx.xr.compose.subspace.SpatialPanel
 import androidx.xr.compose.subspace.MovePolicy
 import androidx.xr.compose.subspace.ResizePolicy
@@ -118,50 +117,45 @@ private fun FloatingOrb(
         label = "rotationY_$index"
     )
 
-    // Create the floating orb in 3D space using SpatialBox
-    SpatialBox(
+    // Create each orb as a separate draggable SpatialPanel
+    SpatialPanel(
         modifier = SubspaceModifier
+            .width(120.dp)
+            .height(120.dp)
             .offset(
                 x = orbPosition.x,
                 y = offsetY,
                 z = orbPosition.z
             )
-            .rotate(pitch = 0f, yaw = rotationY, roll = 0f)
+            .rotate(pitch = 0f, yaw = rotationY, roll = 0f),
+        dragPolicy = MovePolicy(isEnabled = true),  // Enable dragging!
+        resizePolicy = ResizePolicy(isEnabled = false)
     ) {
-        // SpatialPanel bridges subspace and regular Compose
-        SpatialPanel(
-            modifier = SubspaceModifier
-                .width(120.dp)
-                .height(120.dp),
-            dragPolicy = MovePolicy(isEnabled = false),
-            resizePolicy = ResizePolicy(isEnabled = false)
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            shape = CircleShape
         ) {
-            Surface(
-                modifier = Modifier.fillMaxSize(),
-                shape = CircleShape
-            ) {
-                // Get drawable resource ID from the profileImage filename
-                val drawableResId = remember(profileImage) {
-                    context.resources.getIdentifier(
-                        profileImage.removeSuffix(".jpg"),
-                        "drawable",
-                        context.packageName
-                    )
-                }
-
-                // Load image from drawable resources
-                AsyncImage(
-                    model = ImageRequest.Builder(context)
-                        .data(drawableResId)
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = "Floating profile orb $profileImage",
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .border(4.dp, Color.White.copy(alpha = 0.9f), CircleShape),
-                    contentScale = ContentScale.Crop
+            // Get drawable resource ID from the profileImage filename
+            val drawableResId = remember(profileImage) {
+                context.resources.getIdentifier(
+                    profileImage.removeSuffix(".jpg"),
+                    "drawable",
+                    context.packageName
                 )
             }
+
+            // Load image from drawable resources
+            AsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(drawableResId)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = "Floating profile orb $profileImage",
+                modifier = Modifier
+                    .fillMaxSize()
+                    .border(4.dp, Color.White.copy(alpha = 0.9f), CircleShape),
+                contentScale = ContentScale.Crop
+            )
         }
     }
 }

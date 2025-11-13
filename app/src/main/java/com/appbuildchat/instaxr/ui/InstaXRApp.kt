@@ -87,8 +87,9 @@ fun SpatialContent(onRequestHomeSpaceMode: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val activity = context as? androidx.activity.ComponentActivity
 
-    // Check if we're on home route
+    // Check if we're on home route or floating orbs route
     val isHomeRoute = currentRoute == AppRoutes.HOME
+    val isFloatingOrbsRoute = currentRoute == AppRoutes.FLOATING_ORBS
 
     // Get activity-scoped HomeViewModel (same instance as HomeScreen uses)
     val homeViewModel: com.appbuildchat.instaxr.ui.home.HomeViewModel? =
@@ -99,8 +100,26 @@ fun SpatialContent(onRequestHomeSpaceMode: () -> Unit) {
     val homeUiState = homeViewModel?.uiState?.collectAsState()?.value
     val hasSelectedPost = (homeUiState as? com.appbuildchat.instaxr.ui.home.HomeUiState.Success)?.selectedPost != null
 
+    // If on floating orbs route, show the experiment directly
+    if (isFloatingOrbsRoute) {
+        com.appbuildchat.instaxr.ui.experimental.FloatingOrbsExperiment()
+
+        // Back button orbiter
+        Orbiter(
+            position = ContentEdge.Bottom,
+            offset = 20.dp,
+            alignment = Alignment.CenterHorizontally
+        ) {
+            FloatingActionButton(
+                onClick = { navController.popBackStack() },
+                containerColor = MaterialTheme.colorScheme.primaryContainer
+            ) {
+                Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+            }
+        }
+    }
     // If on home with selected post, show three spatial panels
-    if (isHomeRoute && hasSelectedPost && homeViewModel != null && homeUiState != null) {
+    else if (isHomeRoute && hasSelectedPost && homeViewModel != null && homeUiState != null) {
         // EXPANDED STATE: Three separate spatial panels
         com.appbuildchat.instaxr.ui.home.HomeScreenSpatialPanelsAnimated(
             uiState = homeUiState,
