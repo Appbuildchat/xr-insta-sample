@@ -264,7 +264,8 @@ fun HomeScreenSpatialPanelsAnimated(
                 resizePolicy = ResizePolicy(isEnabled = false)
             ) {
                 Surface(
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
+                    color = androidx.compose.ui.graphics.Color.Transparent // Transparent surface
                 ) {
                     CompactPostsList(
                         posts = uiState.posts,
@@ -801,9 +802,9 @@ private fun CompactPostsList(
 ) {
     LazyColumn(
         modifier = modifier
-            .background(MaterialTheme.colorScheme.surfaceVariant),
-        contentPadding = PaddingValues(vertical = 8.dp, horizontal = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+            .background(androidx.compose.ui.graphics.Color.Transparent), // Transparent background
+        contentPadding = PaddingValues(vertical = 12.dp, horizontal = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp) // Transparent spacing
     ) {
         items(posts, key = { it.id }) { post ->
             CompactPostItem(
@@ -835,17 +836,14 @@ private fun CompactPostItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .background(
-                if (isSelected) MaterialTheme.colorScheme.surfaceVariant
-                else MaterialTheme.colorScheme.surface
-            )
-            .padding(8.dp)
+            .background(androidx.compose.ui.graphics.Color.Transparent) // Transparent background
     ) {
-        // Small thumbnail with loading indicator
+        // Square thumbnail container with rounded corners
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(120.dp)
+                .aspectRatio(1f) // Square aspect ratio
+                .clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp)) // More rounded corners
                 .background(MaterialTheme.colorScheme.surfaceVariant),
             contentAlignment = Alignment.Center
         ) {
@@ -863,24 +861,41 @@ private fun CompactPostItem(
                     .diskCachePolicy(coil3.request.CachePolicy.ENABLED)
                     .build(),
                 contentDescription = "Post thumbnail",
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(MaterialTheme.shapes.small),
-                contentScale = ContentScale.Crop
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop // Fill the container
             )
+
+            // Selection indicator overlay
+            if (isSelected) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
+                )
+            }
         }
 
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
-        // Username
-        Text(
-            text = post.username,
-            style = MaterialTheme.typography.bodySmall,
-            fontWeight = FontWeight.SemiBold,
-            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
-            else MaterialTheme.colorScheme.onSurface,
-            maxLines = 1
-        )
+        // Username with badge background for better readability
+        Box(
+            modifier = Modifier
+                .clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+                .background(
+                    if (isSelected) MaterialTheme.colorScheme.primaryContainer
+                    else MaterialTheme.colorScheme.surfaceVariant
+                )
+                .padding(horizontal = 8.dp, vertical = 4.dp)
+        ) {
+            Text(
+                text = post.username,
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.SemiBold,
+                color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
+                else MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1
+            )
+        }
     }
 }
 
