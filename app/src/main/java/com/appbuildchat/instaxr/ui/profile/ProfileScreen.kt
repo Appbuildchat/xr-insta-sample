@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.List
@@ -23,6 +24,7 @@ import com.appbuildchat.instaxr.ui.icons.CommentBubble
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,6 +51,7 @@ import coil3.request.crossfade
 import com.appbuildchat.instaxr.data.model.Comment
 import com.appbuildchat.instaxr.data.model.Post
 import com.appbuildchat.instaxr.data.model.User
+import kotlinx.coroutines.launch
 
 /**
  * Top-level composable for the Profile feature screen
@@ -122,17 +125,6 @@ fun ProfileSpatialContent(
                             )
                         }
 
-                        // Orbiter for tab navigation
-                        Orbiter(
-                            position = androidx.xr.compose.spatial.ContentEdge.Bottom,
-                            offset = 20.dp,
-                            alignment = Alignment.CenterHorizontally
-                        ) {
-                            TabNavigationOrbiter(
-                                selectedTab = uiState.selectedTab,
-                                onTabChange = { tab -> onAction(ProfileAction.ChangeTab(tab)) }
-                            )
-                        }
                     }
                 }
             }
@@ -172,89 +164,88 @@ fun ProfileScreenSpatialPanelsAnimated(
     onAction: (ProfileAction) -> Unit
 ) {
     if (uiState is ProfileUiState.Success && uiState.selectedPost != null) {
-        // Left panel - Thumbnail grid (independently movable)
-        SpatialPanel(
-            modifier = SubspaceModifier
-                .width(250.dp)
-                .height(900.dp)
-                .offset(x = (-500).dp, y = 0.dp, z = 0.dp),
-            dragPolicy = MovePolicy(isEnabled = true),
-            resizePolicy = ResizePolicy(isEnabled = true)
+        androidx.xr.compose.subspace.SpatialCurvedRow(
+            curveRadius = 925.dp
         ) {
-            Surface {
-                ProfileMainContent(
-                    user = uiState.user,
-                    posts = uiState.posts,
-                    selectedTab = uiState.selectedTab,
-                    onAction = onAction,
-                    isCompact = true,
-                    modifier = Modifier.fillMaxSize()
-                )
+            // Left panel - Thumbnail grid
+            SpatialPanel(
+                modifier = SubspaceModifier
+                    .width(250.dp)
+                    .height(900.dp),
+                dragPolicy = MovePolicy(isEnabled = true),
+                resizePolicy = ResizePolicy(isEnabled = true)
+            ) {
+                Surface {
+                    ProfileMainContent(
+                        user = uiState.user,
+                        posts = uiState.posts,
+                        selectedTab = uiState.selectedTab,
+                        onAction = onAction,
+                        isCompact = true,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
             }
-        }
 
-        // Center panel - Large image (independently movable)
-        SpatialPanel(
-            modifier = SubspaceModifier
-                .width(700.dp)
-                .height(900.dp)
-                .offset(x = 0.dp, y = 0.dp, z = 0.dp),
-            dragPolicy = MovePolicy(isEnabled = true),
-            resizePolicy = ResizePolicy(isEnabled = true)
-        ) {
-            Box(modifier = Modifier.fillMaxSize()) {
-                Surface(modifier = Modifier.fillMaxSize()) {
+            // Center panel - Large image
+            SpatialPanel(
+                modifier = SubspaceModifier
+                    .width(900.dp)
+                    .height(900.dp),
+                dragPolicy = MovePolicy(isEnabled = true),
+                resizePolicy = ResizePolicy(isEnabled = true)
+            ) {
+                Box(modifier = Modifier.fillMaxSize()) {
                     PostImageView(
                         post = uiState.selectedPost,
                         modifier = Modifier.fillMaxSize()
                     )
-                }
 
-                PostActionButtons(
-                    post = uiState.selectedPost,
-                    onLikeClick = { onAction(ProfileAction.ToggleLike(uiState.selectedPost.id)) },
-                    onMessageClick = { onAction(ProfileAction.SendMessage(uiState.selectedPost.id)) },
-                    onRepostClick = { onAction(ProfileAction.Repost(uiState.selectedPost.id)) },
-                    onArrowClick = { onAction(ProfileAction.ShowNextPost(uiState.selectedPost.id)) },
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = 32.dp)
-                )
-            }
-
-            // Close button orbiter
-            Orbiter(
-                position = androidx.xr.compose.spatial.ContentEdge.Top,
-                offset = 16.dp,
-                alignment = Alignment.End
-            ) {
-                FilledTonalIconButton(
-                    onClick = { onAction(ProfileAction.DeselectPost) },
-                    modifier = Modifier.size(48.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Close"
+                    PostActionButtons(
+                        post = uiState.selectedPost,
+                        onLikeClick = { onAction(ProfileAction.ToggleLike(uiState.selectedPost.id)) },
+                        onMessageClick = { onAction(ProfileAction.SendMessage(uiState.selectedPost.id)) },
+                        onRepostClick = { onAction(ProfileAction.Repost(uiState.selectedPost.id)) },
+                        onArrowClick = { onAction(ProfileAction.ShowNextPost(uiState.selectedPost.id)) },
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 32.dp)
                     )
                 }
+
+                // Close button orbiter
+                Orbiter(
+                    position = androidx.xr.compose.spatial.ContentEdge.Top,
+                    offset = 16.dp,
+                    alignment = Alignment.End
+                ) {
+                    FilledTonalIconButton(
+                        onClick = { onAction(ProfileAction.DeselectPost) },
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Close"
+                        )
+                    }
+                }
+
             }
 
-        }
-
-        // Right panel - Profile info + comments (independently movable)
-        SpatialPanel(
-            modifier = SubspaceModifier
-                .width(400.dp)
-                .height(900.dp)
-                .offset(x = 500.dp, y = 0.dp, z = 0.dp),
-            dragPolicy = MovePolicy(isEnabled = true),
-            resizePolicy = ResizePolicy(isEnabled = true)
-        ) {
-            Surface {
-                PostCommentsPanel(
-                    post = uiState.selectedPost,
-                    modifier = Modifier.fillMaxSize()
-                )
+            // Right panel - Profile info + comments
+            SpatialPanel(
+                modifier = SubspaceModifier
+                    .width(400.dp)
+                    .height(700.dp),
+                dragPolicy = MovePolicy(isEnabled = true),
+                resizePolicy = ResizePolicy(isEnabled = false)
+            ) {
+                Surface {
+                    PostCommentsPanel(
+                        post = uiState.selectedPost,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
             }
         }
     }
@@ -694,16 +685,19 @@ private fun PostImageView(
     val context = LocalContext.current
     val pagerState = rememberPagerState(pageCount = { post.imageUrls.size })
 
-    Box(
-        modifier = modifier
-            .background(MaterialTheme.colorScheme.background)
-            .fillMaxSize()
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
         if (post.imageUrls.size > 1) {
             // Multiple images - show pager
             HorizontalPager(
                 state = pagerState,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                userScrollEnabled = true
             ) { page ->
                 val imageUrl = post.imageUrls[page]
                 val resourceId = context.resources.getIdentifier(
@@ -713,39 +707,71 @@ private fun PostImageView(
                 )
 
                 if (resourceId != 0) {
-                    AsyncImage(
+                    coil3.compose.SubcomposeAsyncImage(
                         model = ImageRequest.Builder(context)
                             .data(resourceId)
                             .size(1920, 1920)
                             .crossfade(true)
                             .build(),
-                        contentDescription = "Post image ${page + 1}",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Fit
+                        contentDescription = "Post image ${page + 1} of ${post.imageUrls.size}",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp)
+                            .clip(RoundedCornerShape(16.dp)),
+                        contentScale = ContentScale.FillWidth,
+                        loading = {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator()
+                            }
+                        }
                     )
                 }
             }
 
-            // Page indicator
+            // Page indicator with current page info
             Row(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
+                Modifier
+                    .fillMaxWidth()
                     .padding(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                repeat(post.imageUrls.size) { index ->
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(
-                                if (index == pagerState.currentPage)
-                                    MaterialTheme.colorScheme.primary
-                                else
-                                    MaterialTheme.colorScheme.surfaceVariant
-                            )
-                    )
+                // Page dots
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    repeat(post.imageUrls.size) { iteration ->
+                        Box(
+                            modifier = Modifier
+                                .size(if (pagerState.currentPage == iteration) 10.dp else 8.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    if (pagerState.currentPage == iteration)
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                                )
+                        )
+                    }
                 }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                // Page counter
+                Text(
+                    text = "${pagerState.currentPage + 1}/${post.imageUrls.size}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier
+                        .background(
+                            MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
+                            RoundedCornerShape(12.dp)
+                        )
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                )
             }
         } else {
             // Single image
@@ -756,15 +782,25 @@ private fun PostImageView(
             )
 
             if (resourceId != 0) {
-                AsyncImage(
+                coil3.compose.SubcomposeAsyncImage(
                     model = ImageRequest.Builder(context)
                         .data(resourceId)
                         .size(1920, 1920)
                         .crossfade(true)
                         .build(),
-                    contentDescription = "Post image",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Fit
+                    contentDescription = "Large post image",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp)),
+                    contentScale = ContentScale.FillWidth,
+                    loading = {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
                 )
             }
         }
@@ -779,62 +815,178 @@ private fun PostCommentsPanel(
     post: Post,
     modifier: Modifier = Modifier
 ) {
-    LazyColumn(
+    var newCommentText by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("") }
+    val commentsListState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
+    val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+
+    // Local state for comments (without persisting to ViewModel)
+    var localComments by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(post.comments) }
+
+    Column(
         modifier = modifier
             .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp)
+            .fillMaxSize()
     ) {
-        // Profile header
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                ProfileAvatar(
-                    profileImageUrl = post.userProfileImageUrl,
-                    username = post.username,
-                    size = 48.dp
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = post.username,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
+        LazyColumn(
+            state = commentsListState,
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            // Profile header
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    ProfileAvatar(
+                        profileImageUrl = post.userProfileImageUrl,
+                        username = post.username,
+                        size = 48.dp
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = post.username,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
             }
-            Spacer(modifier = Modifier.height(16.dp))
-        }
 
-        // Caption
-        if (!post.caption.isNullOrBlank()) {
+            // Caption
+            if (!post.caption.isNullOrBlank()) {
+                item {
+                    Text(
+                        text = post.caption,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    HorizontalDivider()
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+            }
+
+            // Comments section header
             item {
                 Text(
-                    text = post.caption,
-                    style = MaterialTheme.typography.bodyMedium,
+                    text = "Comments (${localComments.size})",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground
                 )
-                Spacer(modifier = Modifier.height(16.dp))
-                HorizontalDivider()
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
+            // Comments list
+            items(localComments) { comment ->
+                CommentItem(comment = comment)
+                Spacer(modifier = Modifier.height(12.dp))
             }
         }
 
-        // Comments section header
-        item {
-            Text(
-                text = "Comments",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
+        HorizontalDivider()
+
+        // Comment input field
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .background(
+                    MaterialTheme.colorScheme.surfaceVariant,
+                    RoundedCornerShape(24.dp)
+                )
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            TextField(
+                value = newCommentText,
+                onValueChange = { newCommentText = it },
+                modifier = Modifier.weight(1f),
+                placeholder = {
+                    Text(
+                        "Add a comment...",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                },
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
+                    unfocusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
+                    focusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
+                    unfocusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent
+                ),
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    imeAction = androidx.compose.ui.text.input.ImeAction.Send
+                ),
+                keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                    onSend = {
+                        if (newCommentText.isNotBlank()) {
+                            val newComment = Comment(
+                                id = "comment_${System.currentTimeMillis()}",
+                                postId = post.id,
+                                userId = "current_user",
+                                username = "You",
+                                userProfileImageUrl = null,
+                                text = newCommentText,
+                                likeCount = 0,
+                                timestamp = System.currentTimeMillis()
+                            )
+                            localComments = localComments + newComment
+                            newCommentText = ""
+                            keyboardController?.hide()
+
+                            // Scroll to bottom
+                            coroutineScope.launch {
+                                commentsListState.animateScrollToItem(localComments.size - 1)
+                            }
+                        }
+                    }
+                ),
+                maxLines = 3
             )
-            Spacer(modifier = Modifier.height(12.dp))
+
+            // Send button
+            IconButton(
+                onClick = {
+                    if (newCommentText.isNotBlank()) {
+                        val newComment = Comment(
+                            id = "comment_${System.currentTimeMillis()}",
+                            postId = post.id,
+                            userId = "current_user",
+                            username = "You",
+                            userProfileImageUrl = null,
+                            text = newCommentText,
+                            likeCount = 0,
+                            timestamp = System.currentTimeMillis()
+                        )
+                        localComments = localComments + newComment
+                        newCommentText = ""
+                        keyboardController?.hide()
+
+                        // Scroll to bottom
+                        coroutineScope.launch {
+                            commentsListState.animateScrollToItem(localComments.size - 1)
+                        }
+                    }
+                },
+                enabled = newCommentText.isNotBlank()
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Send,
+                    contentDescription = "Send comment",
+                    tint = if (newCommentText.isNotBlank())
+                        MaterialTheme.colorScheme.primary
+                    else
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                )
+            }
         }
 
-        // Comments list
-        items(post.comments) { comment ->
-            CommentItem(comment = comment)
-            Spacer(modifier = Modifier.height(12.dp))
-        }
+        Spacer(modifier = Modifier.height(16.dp))
     }
 }
 
