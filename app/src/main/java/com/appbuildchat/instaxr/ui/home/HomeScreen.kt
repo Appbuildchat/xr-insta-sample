@@ -47,6 +47,7 @@ import androidx.xr.compose.subspace.layout.offset
 import androidx.xr.compose.subspace.MovePolicy
 import androidx.xr.compose.subspace.ResizePolicy
 import coil3.compose.AsyncImage
+import coil3.compose.SubcomposeAsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.appbuildchat.instaxr.data.model.Post
@@ -331,7 +332,8 @@ fun HomeScreenSpatialPanelsAnimated(
                     resizePolicy = ResizePolicy(isEnabled = true)
                 ) {
                     Surface(
-                        modifier = Modifier.fillMaxSize().alpha(animatedAlpha.value)
+                        modifier = Modifier.fillMaxSize().alpha(animatedAlpha.value),
+                        color = androidx.compose.ui.graphics.Color.Transparent
                     ) {
                         CentralImagePreview(
                             post = uiState.selectedPost,
@@ -352,7 +354,8 @@ fun HomeScreenSpatialPanelsAnimated(
                     resizePolicy = ResizePolicy(isEnabled = true)
                 ) {
                     Surface(
-                        modifier = Modifier.fillMaxSize().alpha(animatedAlpha.value)
+                        modifier = Modifier.fillMaxSize().alpha(animatedAlpha.value),
+                        color = androidx.compose.ui.graphics.Color.Transparent
                     ) {
                         CentralImagePreview(
                             post = uiState.selectedPost,
@@ -900,7 +903,8 @@ private fun CompactPostItem(
 }
 
 /**
- * Central image preview panel
+ * Central image preview panel - displays images in a horizontal pager if multiple images
+ * Image adapts to available width while maintaining aspect ratio
  */
 @Composable
 private fun CentralImagePreview(
@@ -909,35 +913,147 @@ private fun CentralImagePreview(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val resourceId = context.resources.getIdentifier(
-        post.imageUrl.substringBeforeLast("."),
-        "drawable",
-        context.packageName
-    )
+    val pagerState = androidx.compose.foundation.pager.rememberPagerState(pageCount = { post.imageUrls.size })
 
-    Box(
-        modifier = modifier
-            .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp),
-        contentAlignment = Alignment.Center
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
-        // Loading indicator shown while image loads
-        CircularProgressIndicator(
-            modifier = Modifier.size(64.dp)
-        )
+        if (post.imageUrls.size > 1) {
+            // Multiple images - show horizontal pager
+            androidx.compose.foundation.pager.HorizontalPager(
+                state = pagerState,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                userScrollEnabled = true
+            ) { page ->
+                val imageUrl = post.imageUrls[page]
+                val resourceId = context.resources.getIdentifier(
+                    imageUrl.substringBeforeLast("."),
+                    "drawable",
+                    context.packageName
+                )
 
-        AsyncImage(
-            model = ImageRequest.Builder(context)
-                .data(resourceId)
-                .size(1920, 1920) // Limit max size to prevent memory issues
-                .crossfade(true)
-                .build(),
-            contentDescription = "Large post image",
-            modifier = Modifier
-                .fillMaxSize()
-                .clip(MaterialTheme.shapes.medium),
-            contentScale = ContentScale.Fit
-        )
+                SubcomposeAsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(resourceId)
+                        .size(1920, 1920)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = "Post image ${page + 1} of ${post.imageUrls.size}",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp)
+                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp)),
+                    contentScale = ContentScale.FillWidth,
+                    loading = {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    },
+                    error = {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Image(
+                                painter = painterResource(android.R.drawable.ic_menu_report_image),
+                                contentDescription = "Error loading image",
+                                modifier = Modifier.size(48.dp)
+                            )
+                        }
+                    }
+                )
+            }
+
+            // Page indicator with current page info
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Page dots
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    repeat(post.imageUrls.size) { iteration ->
+                        Box(
+                            modifier = Modifier
+                                .size(if (pagerState.currentPage == iteration) 10.dp else 8.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    if (pagerState.currentPage == iteration)
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                                )
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                // Page counter
+                Text(
+                    text = "${pagerState.currentPage + 1}/${post.imageUrls.size}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier
+                        .background(
+                            MaterialTheme.colorScheme.surfaceVariant,
+                            androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
+                        )
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+            }
+        } else {
+            // Single image
+            val resourceId = context.resources.getIdentifier(
+                post.imageUrl.substringBeforeLast("."),
+                "drawable",
+                context.packageName
+            )
+
+            SubcomposeAsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(resourceId)
+                    .size(1920, 1920)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = "Large post image",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp)),
+                contentScale = ContentScale.FillWidth,
+                loading = {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                },
+                error = {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Image(
+                            painter = painterResource(android.R.drawable.ic_menu_report_image),
+                            contentDescription = "Error loading image",
+                            modifier = Modifier.size(48.dp)
+                        )
+                    }
+                }
+            )
+        }
     }
 }
 
