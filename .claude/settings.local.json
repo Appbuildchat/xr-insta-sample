@@ -14,7 +14,15 @@
       "Bash(adb shell:*)",
       "Bash(adb:*)",
       "Bash(git commit:*)",
-      "Bash(git fetch:*)"
+      "Bash(git fetch:*)",
+      "Bash(java:*)",
+      "Bash(/usr/libexec/java_home:*)",
+      "Bash(export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-21.0.1.jdk/Contents/Home:*)",
+      "Bash(~/Library/Android/sdk/platform-tools/adb devices)",
+      "Bash(~/Library/Android/sdk/platform-tools/adb install:*)",
+      "Bash(~/Library/Android/sdk/platform-tools/adb uninstall com.appbuildchat.instaxr)",
+      "Bash(~/Library/Android/sdk/platform-tools/adb shell am start -n com.appbuildchat.instaxr/.MainActivity)",
+      "Bash(~/Library/Android/sdk/platform-tools/adb logcat -s \"InstaXR\" -d)"
     ],
     "deny": [],
     "ask": []

@@ -64,9 +64,14 @@ fun StoryCarouselPanel(
     onStoryClick: (String) -> Unit,
     onCloseClick: () -> Unit = {}
 ) {
+    // Calculate width to fit exactly 3 stories:
+    // - Each story: 450.dp
+    // - Spacing between: 32.dp (2 gaps for 3 stories = 64.dp)
+    // - Padding: 32.dp on each side = 64.dp
+    // Total: (3 * 450) + (2 * 32) + 64 = 1478.dp
     SpatialPanel(
         modifier = SubspaceModifier
-            .width(2800.dp)
+            .width(1478.dp)
             .height(800.dp)
             .offset(x = 0.dp, y = 0.dp, z = 0.dp), // Centered horizontally and vertically
         dragPolicy = MovePolicy(isEnabled = true),
@@ -75,7 +80,7 @@ fun StoryCarouselPanel(
         LazyRow(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(horizontal = 32.dp, vertical = 32.dp),
-            horizontalArrangement = Arrangement.spacedBy(32.dp)
+            horizontalArrangement = Arrangement.spacedBy(32.dp, Alignment.CenterHorizontally)
         ) {
             items(stories, key = { it.id }) { story ->
                 StoryCarouselItem(

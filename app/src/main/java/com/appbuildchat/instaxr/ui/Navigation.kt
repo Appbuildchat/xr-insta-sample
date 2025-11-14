@@ -14,7 +14,6 @@ import com.appbuildchat.instaxr.ui.messages.MessagesScreen
 import com.appbuildchat.instaxr.ui.profile.ProfileScreen
 import com.appbuildchat.instaxr.ui.profile.ProfileViewModel
 import com.appbuildchat.instaxr.ui.reels.ReelsScreen
-import com.appbuildchat.instaxr.ui.reels.dome.ReelsDomeScreen
 import com.appbuildchat.instaxr.ui.search.SearchScreen
 import com.appbuildchat.instaxr.ui.settings.*
 import com.appbuildchat.instaxr.ui.story.StoryScreen
@@ -65,11 +64,6 @@ fun AppNavigation(
         // Reels Screen
         composable(route = AppRoutes.REELS) {
             ReelsScreen()
-        }
-
-        // Reels Dome Screen (Experimental)
-        composable(route = AppRoutes.REELS_DOME) {
-            ReelsDomeScreen()
         }
 
         // Story Screen

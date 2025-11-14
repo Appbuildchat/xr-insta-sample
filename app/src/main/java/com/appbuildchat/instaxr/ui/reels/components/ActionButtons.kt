@@ -44,48 +44,14 @@ fun ActionButtons(
         modifier = modifier
             .fillMaxWidth()
             .padding(16.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
+        horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Like button
-        OutlinedButton(
-            onClick = onLikeClick,
-            modifier = Modifier.weight(1f)
-        ) {
-            Icon(
-                imageVector = if (isLiked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                contentDescription = if (isLiked) "Unlike" else "Like",
-                tint = if (isLiked) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(text = if (isLiked) "Liked" else "Like")
-        }
-
-        Spacer(modifier = Modifier.width(8.dp))
-
-        // Share button
-        OutlinedButton(
-            onClick = onShareClick,
-            modifier = Modifier.weight(1f)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Share,
-                contentDescription = "Share",
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(text = "Share")
-        }
-
-        Spacer(modifier = Modifier.width(8.dp))
-
         // More actions button
         var showMenu by remember { mutableStateOf(false) }
 
         OutlinedButton(
-            onClick = { showMenu = true },
-            modifier = Modifier.weight(1f)
+            onClick = { showMenu = true }
         ) {
             Icon(
                 imageVector = Icons.Default.MoreVert,

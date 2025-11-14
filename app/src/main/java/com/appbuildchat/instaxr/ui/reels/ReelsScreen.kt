@@ -90,11 +90,15 @@ internal fun ReelsContent(
                     reel = uiState.currentReel,
                     hasNext = uiState.hasNext,
                     hasPrevious = uiState.hasPrevious,
+                    isLiked = uiState.currentReel?.isLiked ?: false,
                     onScrollNext = { onAction(ReelsAction.ScrollToNext) },
                     onScrollPrevious = { onAction(ReelsAction.ScrollToPrevious) },
+                    onLikeClick = { onAction(ReelsAction.ToggleLike) },
+                    onShareClick = { onAction(ReelsAction.ShareReel) },
                     modifier = Modifier
                         .weight(0.6f)
                         .fillMaxHeight()
+
                 )
 
                 Spacer(modifier = Modifier.width(16.dp))
@@ -190,8 +194,11 @@ fun ReelsSpatialContent(
                             reel = uiState.currentReel,
                             hasNext = uiState.hasNext,
                             hasPrevious = uiState.hasPrevious,
+                            isLiked = uiState.currentReel?.isLiked ?: false,
                             onScrollNext = { onAction(ReelsAction.ScrollToNext) },
                             onScrollPrevious = { onAction(ReelsAction.ScrollToPrevious) },
+                            onLikeClick = { onAction(ReelsAction.ToggleLike) },
+                            onShareClick = { onAction(ReelsAction.ShareReel) },
                             modifier = Modifier.fillMaxSize()
                         )
                     }
