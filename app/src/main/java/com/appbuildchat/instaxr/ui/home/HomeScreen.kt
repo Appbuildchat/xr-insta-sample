@@ -19,11 +19,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Send
 import com.appbuildchat.instaxr.ui.icons.CommentBubble
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
@@ -40,6 +42,7 @@ import androidx.xr.compose.spatial.Orbiter
 import androidx.xr.compose.spatial.Subspace
 import androidx.xr.compose.subspace.SpatialPanel
 import androidx.xr.compose.subspace.SpatialRow
+import androidx.xr.compose.subspace.SpatialCurvedRow
 import androidx.xr.compose.subspace.layout.SubspaceModifier
 import androidx.xr.compose.subspace.layout.height
 import androidx.xr.compose.subspace.layout.width
@@ -47,6 +50,7 @@ import androidx.xr.compose.subspace.layout.offset
 import androidx.xr.compose.subspace.MovePolicy
 import androidx.xr.compose.subspace.ResizePolicy
 import coil3.compose.AsyncImage
+import coil3.compose.SubcomposeAsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.appbuildchat.instaxr.data.model.Post
@@ -254,7 +258,9 @@ fun HomeScreenSpatialPanelsAnimated(
             }
         }
 
-        SpatialRow {
+        SpatialCurvedRow(
+            curveRadius = 1200.dp
+        ) {
             // Left panel - Compact posts list with animated width shrinking (height stays constant)
             SpatialPanel(
                 modifier = SubspaceModifier
@@ -264,7 +270,8 @@ fun HomeScreenSpatialPanelsAnimated(
                 resizePolicy = ResizePolicy(isEnabled = false)
             ) {
                 Surface(
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
+                    color = androidx.compose.ui.graphics.Color.Transparent // Transparent surface
                 ) {
                     CompactPostsList(
                         posts = uiState.posts,
@@ -330,7 +337,8 @@ fun HomeScreenSpatialPanelsAnimated(
                     resizePolicy = ResizePolicy(isEnabled = true)
                 ) {
                     Surface(
-                        modifier = Modifier.fillMaxSize().alpha(animatedAlpha.value)
+                        modifier = Modifier.fillMaxSize().alpha(animatedAlpha.value),
+                        color = androidx.compose.ui.graphics.Color.Transparent
                     ) {
                         CentralImagePreview(
                             post = uiState.selectedPost,
@@ -351,7 +359,8 @@ fun HomeScreenSpatialPanelsAnimated(
                     resizePolicy = ResizePolicy(isEnabled = true)
                 ) {
                     Surface(
-                        modifier = Modifier.fillMaxSize().alpha(animatedAlpha.value)
+                        modifier = Modifier.fillMaxSize().alpha(animatedAlpha.value),
+                        color = androidx.compose.ui.graphics.Color.Transparent
                     ) {
                         CentralImagePreview(
                             post = uiState.selectedPost,
@@ -402,8 +411,9 @@ fun HomeScreenSpatialPanelsAnimated(
 }
 
 /**
- * Three separate spatial panels for XR mode using SpatialRow (non-animated version)
+ * Three separate spatial panels for XR mode using SpatialCurvedRow (non-animated version)
  * Each panel is independently positioned and can be moved/dragged separately
+ * The panels are arranged in a curved arc for better viewing in XR space
  * This is called directly from ApplicationSubspace - NOT wrapped in nested Subspace
  */
 @SuppressLint("RestrictedApi")
@@ -413,7 +423,9 @@ fun HomeScreenSpatialPanels(
     onAction: (HomeAction) -> Unit
 ) {
     if (uiState is HomeUiState.Success && uiState.selectedPost != null) {
-        SpatialRow {
+        SpatialCurvedRow(
+            curveRadius = 1200.dp
+        ) {
             // Left panel - Compact posts list (small)
             SpatialPanel(
                 modifier = SubspaceModifier
@@ -801,9 +813,9 @@ private fun CompactPostsList(
 ) {
     LazyColumn(
         modifier = modifier
-            .background(MaterialTheme.colorScheme.surfaceVariant),
-        contentPadding = PaddingValues(vertical = 8.dp, horizontal = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+            .background(androidx.compose.ui.graphics.Color.Transparent), // Transparent background
+        contentPadding = PaddingValues(vertical = 12.dp, horizontal = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp) // Transparent spacing
     ) {
         items(posts, key = { it.id }) { post ->
             CompactPostItem(
@@ -835,17 +847,14 @@ private fun CompactPostItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .background(
-                if (isSelected) MaterialTheme.colorScheme.surfaceVariant
-                else MaterialTheme.colorScheme.surface
-            )
-            .padding(8.dp)
+            .background(androidx.compose.ui.graphics.Color.Transparent) // Transparent background
     ) {
-        // Small thumbnail with loading indicator
+        // Square thumbnail container with rounded corners
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(120.dp)
+                .aspectRatio(1f) // Square aspect ratio
+                .clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp)) // More rounded corners
                 .background(MaterialTheme.colorScheme.surfaceVariant),
             contentAlignment = Alignment.Center
         ) {
@@ -863,29 +872,47 @@ private fun CompactPostItem(
                     .diskCachePolicy(coil3.request.CachePolicy.ENABLED)
                     .build(),
                 contentDescription = "Post thumbnail",
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(MaterialTheme.shapes.small),
-                contentScale = ContentScale.Crop
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop // Fill the container
             )
+
+            // Selection indicator overlay
+            if (isSelected) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
+                )
+            }
         }
 
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
-        // Username
-        Text(
-            text = post.username,
-            style = MaterialTheme.typography.bodySmall,
-            fontWeight = FontWeight.SemiBold,
-            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
-            else MaterialTheme.colorScheme.onSurface,
-            maxLines = 1
-        )
+        // Username with badge background for better readability
+        Box(
+            modifier = Modifier
+                .clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+                .background(
+                    if (isSelected) MaterialTheme.colorScheme.primaryContainer
+                    else MaterialTheme.colorScheme.surfaceVariant
+                )
+                .padding(horizontal = 8.dp, vertical = 4.dp)
+        ) {
+            Text(
+                text = post.username,
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.SemiBold,
+                color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
+                else MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1
+            )
+        }
     }
 }
 
 /**
- * Central image preview panel
+ * Central image preview panel - displays images in a horizontal pager if multiple images
+ * Image adapts to available width while maintaining aspect ratio
  */
 @Composable
 private fun CentralImagePreview(
@@ -894,35 +921,147 @@ private fun CentralImagePreview(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val resourceId = context.resources.getIdentifier(
-        post.imageUrl.substringBeforeLast("."),
-        "drawable",
-        context.packageName
-    )
+    val pagerState = androidx.compose.foundation.pager.rememberPagerState(pageCount = { post.imageUrls.size })
 
-    Box(
-        modifier = modifier
-            .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp),
-        contentAlignment = Alignment.Center
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
-        // Loading indicator shown while image loads
-        CircularProgressIndicator(
-            modifier = Modifier.size(64.dp)
-        )
+        if (post.imageUrls.size > 1) {
+            // Multiple images - show horizontal pager
+            androidx.compose.foundation.pager.HorizontalPager(
+                state = pagerState,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                userScrollEnabled = true
+            ) { page ->
+                val imageUrl = post.imageUrls[page]
+                val resourceId = context.resources.getIdentifier(
+                    imageUrl.substringBeforeLast("."),
+                    "drawable",
+                    context.packageName
+                )
 
-        AsyncImage(
-            model = ImageRequest.Builder(context)
-                .data(resourceId)
-                .size(1920, 1920) // Limit max size to prevent memory issues
-                .crossfade(true)
-                .build(),
-            contentDescription = "Large post image",
-            modifier = Modifier
-                .fillMaxSize()
-                .clip(MaterialTheme.shapes.medium),
-            contentScale = ContentScale.Fit
-        )
+                SubcomposeAsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(resourceId)
+                        .size(1920, 1920)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = "Post image ${page + 1} of ${post.imageUrls.size}",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp)
+                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp)),
+                    contentScale = ContentScale.FillWidth,
+                    loading = {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    },
+                    error = {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Image(
+                                painter = painterResource(android.R.drawable.ic_menu_report_image),
+                                contentDescription = "Error loading image",
+                                modifier = Modifier.size(48.dp)
+                            )
+                        }
+                    }
+                )
+            }
+
+            // Page indicator with current page info
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Page dots
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    repeat(post.imageUrls.size) { iteration ->
+                        Box(
+                            modifier = Modifier
+                                .size(if (pagerState.currentPage == iteration) 10.dp else 8.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    if (pagerState.currentPage == iteration)
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                                )
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                // Page counter
+                Text(
+                    text = "${pagerState.currentPage + 1}/${post.imageUrls.size}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier
+                        .background(
+                            MaterialTheme.colorScheme.surfaceVariant,
+                            androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
+                        )
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+            }
+        } else {
+            // Single image
+            val resourceId = context.resources.getIdentifier(
+                post.imageUrl.substringBeforeLast("."),
+                "drawable",
+                context.packageName
+            )
+
+            SubcomposeAsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(resourceId)
+                    .size(1920, 1920)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = "Large post image",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp)),
+                contentScale = ContentScale.FillWidth,
+                loading = {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                },
+                error = {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Image(
+                            painter = painterResource(android.R.drawable.ic_menu_report_image),
+                            contentDescription = "Error loading image",
+                            modifier = Modifier.size(48.dp)
+                        )
+                    }
+                }
+            )
+        }
     }
 }
 
@@ -935,6 +1074,14 @@ private fun DescriptionAndCommentsPanel(
     onLikeClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var newCommentText by remember { androidx.compose.runtime.mutableStateOf("") }
+    val commentsListState = remember { androidx.compose.foundation.lazy.LazyListState() }
+    val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
+    val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+
+    // Local state for comments (without persisting to ViewModel)
+    var localComments by remember { androidx.compose.runtime.mutableStateOf(post.comments) }
+
     Column(
         modifier = modifier
             .background(MaterialTheme.colorScheme.surface)
@@ -991,11 +1138,113 @@ private fun DescriptionAndCommentsPanel(
 
         // Comments list
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            state = commentsListState,
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(post.comments, key = { it.id }) { comment ->
+            items(localComments, key = { it.id }) { comment ->
                 CommentItem(comment = comment)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Comment input field
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    MaterialTheme.colorScheme.surfaceVariant,
+                    androidx.compose.foundation.shape.RoundedCornerShape(24.dp)
+                )
+                .padding(horizontal = 4.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            TextField(
+                value = newCommentText,
+                onValueChange = { newCommentText = it },
+                modifier = Modifier.weight(1f),
+                placeholder = {
+                    Text(
+                        "Add a comment...",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                },
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
+                    unfocusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
+                    focusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
+                    unfocusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent
+                ),
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    imeAction = androidx.compose.ui.text.input.ImeAction.Send
+                ),
+                keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                    onSend = {
+                        if (newCommentText.isNotBlank()) {
+                            val newComment = com.appbuildchat.instaxr.data.model.Comment(
+                                id = "comment_${System.currentTimeMillis()}",
+                                postId = post.id,
+                                userId = "current_user",
+                                username = "You",
+                                userProfileImageUrl = null,
+                                text = newCommentText,
+                                likeCount = 0,
+                                isLiked = false,
+                                timestamp = System.currentTimeMillis()
+                            )
+                            localComments = localComments + newComment
+                            newCommentText = ""
+                            keyboardController?.hide()
+
+                            // Scroll to bottom
+                            coroutineScope.launch {
+                                commentsListState.animateScrollToItem(localComments.size - 1)
+                            }
+                        }
+                    }
+                ),
+                maxLines = 3
+            )
+
+            // Send button
+            IconButton(
+                onClick = {
+                    if (newCommentText.isNotBlank()) {
+                        val newComment = com.appbuildchat.instaxr.data.model.Comment(
+                            id = "comment_${System.currentTimeMillis()}",
+                            postId = post.id,
+                            userId = "current_user",
+                            username = "You",
+                            userProfileImageUrl = null,
+                            text = newCommentText,
+                            likeCount = 0,
+                            isLiked = false,
+                            timestamp = System.currentTimeMillis()
+                        )
+                        localComments = localComments + newComment
+                        newCommentText = ""
+                        keyboardController?.hide()
+
+                        // Scroll to bottom
+                        coroutineScope.launch {
+                            commentsListState.animateScrollToItem(localComments.size - 1)
+                        }
+                    }
+                },
+                enabled = newCommentText.isNotBlank()
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Send,
+                    contentDescription = "Send comment",
+                    tint = if (newCommentText.isNotBlank())
+                        MaterialTheme.colorScheme.primary
+                    else
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                )
             }
         }
     }

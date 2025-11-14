@@ -138,12 +138,12 @@ object MockDataLoader {
 
             mockPosts.mapIndexed { index, mockPost ->
                 val user = users[mockPost.userId]
-                // Create multiple images for some posts to demonstrate carousel
-                val imageUrls = if (index % 2 == 0) {
-                    // Every other post gets multiple images
-                    listOf(mockPost.imageUrl, mockPost.imageUrl) // Duplicate for demo
-                } else {
-                    listOf(mockPost.imageUrl)
+                // Create multiple images for all posts to demonstrate carousel (2-3 images each)
+                // Reuse the same image from mockPost.imageUrl to ensure it exists in drawable resources
+                val imageUrls = when (index % 3) {
+                    0 -> listOf(mockPost.imageUrl, mockPost.imageUrl, mockPost.imageUrl) // 3 images
+                    1 -> listOf(mockPost.imageUrl, mockPost.imageUrl) // 2 images
+                    else -> listOf(mockPost.imageUrl, mockPost.imageUrl, mockPost.imageUrl) // 3 images
                 }
 
                 Post(

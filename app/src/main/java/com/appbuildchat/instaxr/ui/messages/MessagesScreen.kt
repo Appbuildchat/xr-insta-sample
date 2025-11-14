@@ -341,6 +341,7 @@ private fun ChatDetailPanel(
 ) {
     val context = LocalContext.current
     var messageText by rememberSaveable { mutableStateOf("") }
+    val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
 
     if (chat == null) return
 
@@ -431,7 +432,19 @@ private fun ChatDetailPanel(
                     modifier = Modifier.weight(1f),
                     placeholder = { Text("Type a message...") },
                     shape = RoundedCornerShape(24.dp),
-                    maxLines = 4
+                    maxLines = 4,
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        imeAction = androidx.compose.ui.text.input.ImeAction.Send
+                    ),
+                    keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                        onSend = {
+                            if (messageText.isNotBlank() && onSendMessage != null) {
+                                onSendMessage(messageText.trim())
+                                messageText = ""
+                                keyboardController?.hide()
+                            }
+                        }
+                    )
                 )
 
                 IconButton(
@@ -439,6 +452,7 @@ private fun ChatDetailPanel(
                         if (messageText.isNotBlank() && onSendMessage != null) {
                             onSendMessage(messageText.trim())
                             messageText = ""
+                            keyboardController?.hide()
                         }
                     },
                     enabled = messageText.isNotBlank()
