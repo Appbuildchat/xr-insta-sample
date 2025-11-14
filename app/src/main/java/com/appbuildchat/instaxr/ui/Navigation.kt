@@ -17,6 +17,7 @@ import com.appbuildchat.instaxr.ui.reels.ReelsScreen
 import com.appbuildchat.instaxr.ui.reels.dome.ReelsDomeScreen
 import com.appbuildchat.instaxr.ui.search.SearchScreen
 import com.appbuildchat.instaxr.ui.settings.*
+import com.appbuildchat.instaxr.ui.story.StoryScreen
 
 /**
  * Main navigation routes for the app
@@ -25,6 +26,7 @@ object AppRoutes {
     const val HOME = "home"
     const val REELS = "reels"
     const val REELS_DOME = "reels_dome" // Experimental dome carousel
+    const val STORY = "story"
     const val MY_PAGE = "mypage"
     const val SEARCH = "search"
     const val MESSAGES = "messages"
@@ -68,6 +70,11 @@ fun AppNavigation(
         // Reels Dome Screen (Experimental)
         composable(route = AppRoutes.REELS_DOME) {
             ReelsDomeScreen()
+        }
+
+        // Story Screen
+        composable(route = AppRoutes.STORY) {
+            StoryScreen()
         }
 
         // My Page (Profile) Screen
