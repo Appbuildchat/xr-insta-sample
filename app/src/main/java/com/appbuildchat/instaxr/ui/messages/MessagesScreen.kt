@@ -160,7 +160,9 @@ fun MessagesScreenSpatialPanels(
             dragPolicy = MovePolicy(isEnabled = true),
             resizePolicy = ResizePolicy(isEnabled = false)
         ) {
-            Surface {
+            Surface(
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 1.0f)
+            ) {
                 ChatListPanel(
                     chats = uiState.chats,
                     onChatClick = { chatId -> onAction(MessagesAction.SelectChat(chatId)) }
@@ -177,7 +179,8 @@ fun MessagesScreenSpatialPanels(
             resizePolicy = ResizePolicy(isEnabled = true)
         ) {
             Surface(
-                modifier = Modifier.fillMaxSize().alpha(animatedAlpha.value)
+                modifier = Modifier.fillMaxSize().alpha(animatedAlpha.value),
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.75f)
             ) {
                 ChatDetailPanel(
                     chat = uiState.selectedChat,
