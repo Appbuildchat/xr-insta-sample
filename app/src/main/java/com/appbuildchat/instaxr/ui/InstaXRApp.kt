@@ -95,6 +95,8 @@ fun SpatialContent(onRequestHomeSpaceMode: () -> Unit) {
     val isReelsRoute = currentRoute == AppRoutes.REELS
     val isReelsDomeRoute = currentRoute == AppRoutes.REELS_DOME
     val isProfileRoute = currentRoute == AppRoutes.MY_PAGE
+    val isMessagesRoute = currentRoute == AppRoutes.MESSAGES
+    val isStoryRoute = currentRoute == AppRoutes.STORY
 
     // Get activity-scoped HomeViewModel (same instance as HomeScreen uses)
     val homeViewModel: com.appbuildchat.instaxr.ui.home.HomeViewModel? =
@@ -126,6 +128,18 @@ fun SpatialContent(onRequestHomeSpaceMode: () -> Unit) {
             androidx.hilt.navigation.compose.hiltViewModel(viewModelStoreOwner = activity)
         } else null
 
+    // Get activity-scoped MessagesViewModel (same instance as MessagesScreen uses)
+    val messagesViewModel: com.appbuildchat.instaxr.ui.messages.MessagesViewModel? =
+        if (isMessagesRoute && activity != null) {
+            androidx.hilt.navigation.compose.hiltViewModel(viewModelStoreOwner = activity)
+        } else null
+
+    // Get StoryViewModel for Story route
+    val storyViewModel: com.appbuildchat.instaxr.ui.story.StoryViewModel? =
+        if (isStoryRoute && activity != null) {
+            androidx.hilt.navigation.compose.hiltViewModel(viewModelStoreOwner = activity)
+        } else null
+
     val homeUiState = homeViewModel?.uiState?.collectAsState()?.value
     val hasSelectedPost = (homeUiState as? com.appbuildchat.instaxr.ui.home.HomeUiState.Success)?.selectedPost != null
 
@@ -136,6 +150,9 @@ fun SpatialContent(onRequestHomeSpaceMode: () -> Unit) {
     val hasSelectedProfilePost = (profileUiState as? com.appbuildchat.instaxr.ui.profile.ProfileUiState.Success)?.selectedPost != null
     val searchUiState = searchViewModel?.uiState?.collectAsState()?.value
     val isSearchFullSpace = (searchUiState as? com.appbuildchat.instaxr.ui.search.SearchUiState.Success)?.isFullSpaceMode == true
+    val messagesUiState = messagesViewModel?.uiState?.collectAsState()?.value
+    val hasSelectedChat = (messagesUiState as? com.appbuildchat.instaxr.ui.messages.MessagesUiState.Success)?.selectedChat != null
+    val storyUiState = storyViewModel?.uiState?.collectAsState()?.value
 
     // If on reels dome route, show dome carousel
     if (isReelsDomeRoute && reelsDomeViewModel != null && reelsDomeUiState != null) {
@@ -169,6 +186,58 @@ fun SpatialContent(onRequestHomeSpaceMode: () -> Unit) {
                         navController.navigateSingleTopTo(AppRoutes.REELS)
                     }
                     // NavigationItem(Icons.Default.Star, "Dome", true) { }
+                    NavigationItem(Icons.Default.AccountCircle, "Story", false) {
+                        navController.navigateSingleTopTo(AppRoutes.STORY)
+                    }
+                    NavigationItem(Icons.Default.Search, "Search", false) {
+                        navController.navigateSingleTopTo(AppRoutes.SEARCH)
+                    }
+                    NavigationItem(Icons.Default.Add, "Add", false) {
+                        navController.navigateSingleTopTo(AppRoutes.ADD_POST)
+                    }
+                    NavigationItem(Icons.Default.Email, "Messages", false) {
+                        navController.navigateSingleTopTo(AppRoutes.MESSAGES)
+                    }
+                    NavigationItem(Icons.Default.Person, "My Page", false) {
+                        navController.navigateSingleTopTo(AppRoutes.MY_PAGE)
+                    }
+                    NavigationItem(Icons.Default.Settings, "Settings", false) {
+                        navController.navigateSingleTopTo(AppRoutes.SETTINGS)
+                    }
+                }
+            }
+        }
+    } else if (isStoryRoute && storyViewModel != null && storyUiState != null) {
+        // STORY STATE: Story bar on left + carousel and detail panels
+        com.appbuildchat.instaxr.ui.story.StorySpatialContent(
+            uiState = storyUiState,
+            onAction = storyViewModel::handleAction
+        )
+
+        // Show navigation orbiter at the bottom
+        Orbiter(
+            position = ContentEdge.Bottom,
+            offset = 100.dp,
+            alignment = Alignment.CenterHorizontally
+        ) {
+            Surface(
+                modifier = Modifier.clip(RoundedCornerShape(28.dp)),
+                color = MaterialTheme.colorScheme.surfaceContainer,
+                tonalElevation = 3.dp,
+                shadowElevation = 8.dp
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    NavigationItem(Icons.Default.Home, "Home", false) {
+                        navController.navigateSingleTopTo(AppRoutes.HOME)
+                    }
+                    NavigationItem(Icons.Default.PlayArrow, "Reels", false) {
+                        navController.navigateSingleTopTo(AppRoutes.REELS)
+                    }
+                    NavigationItem(Icons.Default.AccountCircle, "Story", true) { }
                     NavigationItem(Icons.Default.Search, "Search", false) {
                         navController.navigateSingleTopTo(AppRoutes.SEARCH)
                     }
@@ -215,6 +284,9 @@ fun SpatialContent(onRequestHomeSpaceMode: () -> Unit) {
                         navController.navigateSingleTopTo(AppRoutes.HOME)
                     }
                     NavigationItem(Icons.Default.PlayArrow, "Reels", true) { }
+                    NavigationItem(Icons.Default.AccountCircle, "Story", false) {
+                        navController.navigateSingleTopTo(AppRoutes.STORY)
+                    }
                     NavigationItem(Icons.Default.Search, "Search", false) {
                         navController.navigateSingleTopTo(AppRoutes.SEARCH)
                     }
@@ -259,6 +331,12 @@ fun SpatialContent(onRequestHomeSpaceMode: () -> Unit) {
                 ) {
                     NavigationItem(Icons.Default.Home, "Home", false) {
                         navController.navigateSingleTopTo(AppRoutes.HOME)
+                    }
+                    NavigationItem(Icons.Default.PlayArrow, "Reels", false) {
+                        navController.navigateSingleTopTo(AppRoutes.REELS)
+                    }
+                    NavigationItem(Icons.Default.AccountCircle, "Story", false) {
+                        navController.navigateSingleTopTo(AppRoutes.STORY)
                     }
                     NavigationItem(Icons.Default.Search, "Search", true) { /* Current */ }
                     NavigationItem(Icons.Default.Add, "Add", false) {
@@ -306,6 +384,14 @@ fun SpatialContent(onRequestHomeSpaceMode: () -> Unit) {
                 ) {
                     NavigationItem(Icons.Default.Home, "Home", true) {
                         viewModel.handleAction(com.appbuildchat.instaxr.ui.home.HomeAction.DeselectPost)
+                    }
+                    NavigationItem(Icons.Default.PlayArrow, "Reels", false) {
+                        viewModel.handleAction(com.appbuildchat.instaxr.ui.home.HomeAction.DeselectPost)
+                        navController.navigateSingleTopTo(AppRoutes.REELS)
+                    }
+                    NavigationItem(Icons.Default.AccountCircle, "Story", false) {
+                        viewModel.handleAction(com.appbuildchat.instaxr.ui.home.HomeAction.DeselectPost)
+                        navController.navigateSingleTopTo(AppRoutes.STORY)
                     }
                     NavigationItem(Icons.Default.Search, "Search", false) {
                         viewModel.handleAction(com.appbuildchat.instaxr.ui.home.HomeAction.DeselectPost)
@@ -362,6 +448,14 @@ fun SpatialContent(onRequestHomeSpaceMode: () -> Unit) {
                         viewModel.handleAction(com.appbuildchat.instaxr.ui.profile.ProfileAction.DeselectPost)
                         navController.navigateSingleTopTo(AppRoutes.HOME)
                     }
+                    NavigationItem(Icons.Default.PlayArrow, "Reels", false) {
+                        viewModel.handleAction(com.appbuildchat.instaxr.ui.profile.ProfileAction.DeselectPost)
+                        navController.navigateSingleTopTo(AppRoutes.REELS)
+                    }
+                    NavigationItem(Icons.Default.AccountCircle, "Story", false) {
+                        viewModel.handleAction(com.appbuildchat.instaxr.ui.profile.ProfileAction.DeselectPost)
+                        navController.navigateSingleTopTo(AppRoutes.STORY)
+                    }
                     NavigationItem(Icons.Default.Search, "Search", false) {
                         viewModel.handleAction(com.appbuildchat.instaxr.ui.profile.ProfileAction.DeselectPost)
                         navController.navigateSingleTopTo(AppRoutes.SEARCH)
@@ -379,6 +473,68 @@ fun SpatialContent(onRequestHomeSpaceMode: () -> Unit) {
                     }
                     NavigationItem(Icons.Default.Settings, "Settings", false) {
                         viewModel.handleAction(com.appbuildchat.instaxr.ui.profile.ProfileAction.DeselectPost)
+                        navController.navigateSingleTopTo(AppRoutes.SETTINGS)
+                    }
+                }
+            }
+        }
+    } else if (isMessagesRoute && hasSelectedChat && messagesViewModel != null && messagesUiState != null) {
+        // EXPANDED STATE FOR MESSAGES: Two spatial panels
+        // Note: hasSelectedChat being true guarantees messagesViewModel and messagesUiState are non-null
+        val viewModel = messagesViewModel!!
+        val uiState = messagesUiState!!
+
+        com.appbuildchat.instaxr.ui.messages.MessagesScreenSpatialPanels(
+            uiState = uiState,
+            onAction = viewModel::handleAction
+        )
+
+        // Still show navigation orbiter
+        Orbiter(
+            position = ContentEdge.Bottom,
+            offset = 100.dp,
+            alignment = Alignment.CenterHorizontally
+        ) {
+            Surface(
+                modifier = Modifier.clip(RoundedCornerShape(28.dp)),
+                color = MaterialTheme.colorScheme.surfaceContainer,
+                tonalElevation = 3.dp,
+                shadowElevation = 8.dp
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    NavigationItem(Icons.Default.Home, "Home", false) {
+                        viewModel.handleAction(com.appbuildchat.instaxr.ui.messages.MessagesAction.DeselectChat)
+                        navController.navigateSingleTopTo(AppRoutes.HOME)
+                    }
+                    NavigationItem(Icons.Default.PlayArrow, "Reels", false) {
+                        viewModel.handleAction(com.appbuildchat.instaxr.ui.messages.MessagesAction.DeselectChat)
+                        navController.navigateSingleTopTo(AppRoutes.REELS)
+                    }
+                    NavigationItem(Icons.Default.AccountCircle, "Story", false) {
+                        viewModel.handleAction(com.appbuildchat.instaxr.ui.messages.MessagesAction.DeselectChat)
+                        navController.navigateSingleTopTo(AppRoutes.STORY)
+                    }
+                    NavigationItem(Icons.Default.Search, "Search", false) {
+                        viewModel.handleAction(com.appbuildchat.instaxr.ui.messages.MessagesAction.DeselectChat)
+                        navController.navigateSingleTopTo(AppRoutes.SEARCH)
+                    }
+                    NavigationItem(Icons.Default.Add, "Add", false) {
+                        viewModel.handleAction(com.appbuildchat.instaxr.ui.messages.MessagesAction.DeselectChat)
+                        navController.navigateSingleTopTo(AppRoutes.ADD_POST)
+                    }
+                    NavigationItem(Icons.Default.Email, "Messages", true) {
+                        viewModel.handleAction(com.appbuildchat.instaxr.ui.messages.MessagesAction.DeselectChat)
+                    }
+                    NavigationItem(Icons.Default.Person, "My Page", false) {
+                        viewModel.handleAction(com.appbuildchat.instaxr.ui.messages.MessagesAction.DeselectChat)
+                        navController.navigateSingleTopTo(AppRoutes.MY_PAGE)
+                    }
+                    NavigationItem(Icons.Default.Settings, "Settings", false) {
+                        viewModel.handleAction(com.appbuildchat.instaxr.ui.messages.MessagesAction.DeselectChat)
                         navController.navigateSingleTopTo(AppRoutes.SETTINGS)
                     }
                 }
@@ -435,6 +591,9 @@ fun SpatialContent(onRequestHomeSpaceMode: () -> Unit) {
                         // NavigationItem(Icons.Default.Star, "Dome", currentRoute == AppRoutes.REELS_DOME) {
                         //     navController.navigateSingleTopTo(AppRoutes.REELS_DOME)
                         // }
+                        NavigationItem(Icons.Default.AccountCircle, "Story", currentRoute == AppRoutes.STORY) {
+                            navController.navigateSingleTopTo(AppRoutes.STORY)
+                        }
                         NavigationItem(Icons.Default.Search, "Search", currentRoute == AppRoutes.SEARCH) {
                             navController.navigateSingleTopTo(AppRoutes.SEARCH)
                         }
@@ -505,6 +664,9 @@ fun My2DContent(onRequestFullSpaceMode: () -> Unit) {
                     // NavigationItem(Icons.Default.Star, "Dome", currentRoute == AppRoutes.REELS_DOME) {
                     //     navController.navigateSingleTopTo(AppRoutes.REELS_DOME)
                     // }
+                    NavigationItem(Icons.Default.AccountCircle, "Story", currentRoute == AppRoutes.STORY) {
+                        navController.navigateSingleTopTo(AppRoutes.STORY)
+                    }
                     NavigationItem(Icons.Default.Search, "Search", currentRoute == AppRoutes.SEARCH) {
                         navController.navigateSingleTopTo(AppRoutes.SEARCH)
                     }
