@@ -48,6 +48,7 @@ fun <T> InfiniteGrid(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(4.dp),
     state: LazyGridState = rememberLazyGridState(),
+    key: ((T) -> Any)? = null,
     content: @Composable (T) -> Unit
 ) {
     // Determine when to load more content
@@ -90,7 +91,11 @@ fun <T> InfiniteGrid(
         ) {
             items(
                 count = items.size,
-                key = { index -> items.getOrNull(index)?.hashCode() ?: index }
+                key = { index ->
+                    items.getOrNull(index)?.let { item ->
+                        if (key != null) key(item) else item.hashCode()
+                    } ?: index
+                }
             ) { index ->
                 items.getOrNull(index)?.let { item ->
                     content(item)
