@@ -48,6 +48,7 @@ class SearchViewModel @Inject constructor(
             is SearchAction.ScrollVertical -> scrollVertical(action.delta)
             is SearchAction.FocusItem -> focusItem(action.item)
             is SearchAction.UnfocusItem -> unfocusItem()
+            is SearchAction.Search -> performSearch(action.query)
         }
     }
 
@@ -310,6 +311,36 @@ class SearchViewModel @Inject constructor(
             }
         }
     }
+
+    /**
+     * Perform search - reshuffles data randomly to simulate search results
+     */
+    private fun performSearch(query: String) {
+        viewModelScope.launch {
+            val currentState = _uiState.value
+            if (currentState is SearchUiState.Success) {
+                // Set searching state
+                _uiState.update {
+                    currentState.copy(isSearching = true)
+                }
+
+                // Simulate network delay
+                kotlinx.coroutines.delay(800)
+
+                // Reshuffle items randomly
+                // Use distinctBy to ensure unique IDs and avoid duplicate key errors in LazyGrid
+                val reshuffledItems = currentState.exploreItems.shuffled().distinctBy { it.id }
+
+                // Update with reshuffled items
+                _uiState.update {
+                    currentState.copy(
+                        exploreItems = reshuffledItems,
+                        isSearching = false
+                    )
+                }
+            }
+        }
+    }
 }
 
 /**
@@ -325,7 +356,8 @@ sealed interface SearchUiState {
         val viewportRotation: Float = 0f, // Rotation angle in degrees
         val focusedItem: ExploreItem? = null, // Item in XR focus mode
         val verticalOffset: Float = 0f, // Vertical scroll offset
-        val isFullSpaceMode: Boolean = true // Whether in Full Space Mode
+        val isFullSpaceMode: Boolean = true, // Whether in Full Space Mode
+        val isSearching: Boolean = false // Whether search/reshuffle is in progress
     ) : SearchUiState
 
     data class Error(val message: String) : SearchUiState
@@ -345,4 +377,5 @@ sealed interface SearchAction {
     data class ScrollVertical(val delta: Float) : SearchAction
     data class FocusItem(val item: ExploreItem) : SearchAction
     data object UnfocusItem : SearchAction
+    data class Search(val query: String) : SearchAction
 }

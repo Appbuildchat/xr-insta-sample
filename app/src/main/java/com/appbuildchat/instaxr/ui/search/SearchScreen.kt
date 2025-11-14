@@ -20,18 +20,31 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.background
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -47,6 +60,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.xr.compose.platform.LocalSpatialCapabilities
 import androidx.xr.compose.platform.LocalSpatialConfiguration
+import androidx.xr.compose.spatial.ContentEdge
+import androidx.xr.compose.spatial.Orbiter
 import androidx.xr.compose.spatial.Subspace
 import androidx.xr.compose.subspace.SpatialPanel
 import androidx.xr.compose.subspace.SpatialRow
@@ -57,6 +72,7 @@ import androidx.xr.compose.subspace.layout.alpha
 import androidx.xr.compose.subspace.layout.height
 import androidx.xr.compose.subspace.layout.width
 import androidx.xr.compose.subspace.layout.offset
+import androidx.compose.foundation.shape.CornerSize
 import com.appbuildchat.instaxr.data.model.ExploreItem
 import com.appbuildchat.instaxr.ui.components.CompactInfiniteGrid
 import com.appbuildchat.instaxr.ui.components.InfiniteGrid
@@ -211,7 +227,8 @@ fun SearchFullSpaceContent(
                         viewportRotation = uiState.viewportRotation,
                         focusedItem = uiState.focusedItem,
                         onAction = onAction,
-                        modifier = modifier
+                        modifier = modifier,
+                        isSearching = uiState.isSearching
                     )
                 }
             }
@@ -292,7 +309,8 @@ internal fun SearchSpatialContent(
                             viewportRotation = uiState.viewportRotation,
                             focusedItem = uiState.focusedItem,
                             onAction = onAction,
-                            modifier = modifier
+                            modifier = modifier,
+                            isSearching = uiState.isSearching
                         )
                     }
                 }
@@ -635,13 +653,15 @@ private fun ItemDetailsPanel(
  * - Middle panel: 0° elevation (eye level), 900dp height
  * - Lower panel: -35° elevation, 600dp height
  */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 private fun FullSpaceSphericalView(
     exploreItems: List<ExploreItem>,
     viewportRotation: Float,
     focusedItem: ExploreItem?,
     onAction: (SearchAction) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isSearching: Boolean = false
 ) {
     android.util.Log.d("SearchScreen", "FullSpaceSphericalView with ${exploreItems.size} items - 3 large curved panels")
 
@@ -690,8 +710,72 @@ private fun FullSpaceSphericalView(
                 items = panelItems,
                 onItemClick = { item -> onAction(SearchAction.FocusItem(item)) },
                 onLoadMore = { direction -> onAction(SearchAction.LoadMore(direction)) },
-                panelName = panelConfig.name
+                panelName = panelConfig.name,
+                onAction = onAction,
+                isSearching = isSearching
             )
+        }
+    }
+
+    // Search bar as an Orbiter at the top
+    Orbiter(
+        position = ContentEdge.Top,
+        alignment = Alignment.CenterHorizontally,
+        offset = 16.dp
+    ) {
+        Surface(
+            modifier = Modifier
+                .width(700.dp)
+                .height(80.dp),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(40.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 3.dp,
+            shadowElevation = 8.dp
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                var searchText by remember { mutableStateOf("") }
+
+                OutlinedTextField(
+                    value = searchText,
+                    onValueChange = { searchText = it },
+                    placeholder = { Text("Search...") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = "Search"
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+                    keyboardOptions = KeyboardOptions(
+                        imeAction = ImeAction.Done
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onDone = {
+                            if (searchText.isNotEmpty()) {
+                                onAction(SearchAction.Search(searchText))
+                            }
+                        }
+                    )
+                )
+
+                // Loading overlay when searching
+                if (isSearching) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.height(24.dp).width(24.dp))
+                    }
+                }
+            }
         }
     }
 }
@@ -714,7 +798,9 @@ private fun CurvedPanelContent(
     items: List<ExploreItem>,
     onItemClick: (ExploreItem) -> Unit,
     onLoadMore: (LoadDirection) -> Unit,
-    panelName: String
+    panelName: String,
+    onAction: (SearchAction) -> Unit,
+    isSearching: Boolean = false
 ) {
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -741,7 +827,8 @@ private fun CurvedPanelContent(
                     items = items,
                     onLoadMore = onLoadMore,
                     state = gridState,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
+                    key = { item -> item.id }
                 ) { item ->
                     ExploreGridItem(
                         item = item,
