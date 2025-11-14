@@ -132,6 +132,7 @@ class ReelsViewModel : ViewModel() {
                 username = "jane_doe",
                 userProfileImageUrl = null,
                 videoUrl = "https://example.com/video1.mp4",
+                videoResId = com.appbuildchat.instaxr.R.raw.video_1, // Use local video
                 thumbnailUrl = null,
                 caption = "Beautiful sunset at the beach! #sunset #nature #peaceful",
                 likeCount = 1250,
@@ -176,6 +177,7 @@ class ReelsViewModel : ViewModel() {
                 username = "chef_marco",
                 userProfileImageUrl = null,
                 videoUrl = "https://example.com/video2.mp4",
+                videoResId = com.appbuildchat.instaxr.R.raw.video_2, // Use local video
                 thumbnailUrl = null,
                 caption = "Making the perfect pasta carbonara #cooking #pasta #italianfood",
                 likeCount = 3400,
@@ -211,6 +213,7 @@ class ReelsViewModel : ViewModel() {
                 username = "fitness_coach_alex",
                 userProfileImageUrl = null,
                 videoUrl = "https://example.com/video3.mp4",
+                videoResId = com.appbuildchat.instaxr.R.raw.video_3, // Use local video
                 thumbnailUrl = null,
                 caption = "5-minute morning workout routine #fitness #workout #motivation",
                 likeCount = 5600,
@@ -246,6 +249,33 @@ class ReelsViewModel : ViewModel() {
                         text = "@gym_enthusiast Start with 10-15 reps, 3 sets!",
                         likeCount = 78,
                         timestamp = System.currentTimeMillis() - 74000000
+                    )
+                )
+            ),
+            Reel(
+                id = "reel_4",
+                userId = "user_11",
+                username = "travel_explorer",
+                userProfileImageUrl = null,
+                videoUrl = "https://example.com/video4.mp4",
+                videoResId = com.appbuildchat.instaxr.R.raw.video_4, // Use local video
+                thumbnailUrl = null,
+                caption = "Exploring hidden gems around the world #travel #adventure #wanderlust",
+                likeCount = 4200,
+                commentCount = 156,
+                viewCount = 67000,
+                isLiked = false,
+                isSaved = false,
+                timestamp = System.currentTimeMillis() - 172800000,
+                comments = listOf(
+                    Comment(
+                        id = "comment_9",
+                        postId = "reel_4",
+                        userId = "user_12",
+                        username = "adventure_seeker",
+                        text = "This place is incredible! Added to my bucket list",
+                        likeCount = 91,
+                        timestamp = System.currentTimeMillis() - 160000000
                     )
                 )
             )
