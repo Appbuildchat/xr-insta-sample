@@ -40,6 +40,7 @@ import androidx.xr.compose.spatial.Orbiter
 import androidx.xr.compose.spatial.Subspace
 import androidx.xr.compose.subspace.SpatialPanel
 import androidx.xr.compose.subspace.SpatialRow
+import androidx.xr.compose.subspace.SpatialCurvedRow
 import androidx.xr.compose.subspace.layout.SubspaceModifier
 import androidx.xr.compose.subspace.layout.height
 import androidx.xr.compose.subspace.layout.width
@@ -255,7 +256,9 @@ fun HomeScreenSpatialPanelsAnimated(
             }
         }
 
-        SpatialRow {
+        SpatialCurvedRow(
+            curveRadius = 1200.dp
+        ) {
             // Left panel - Compact posts list with animated width shrinking (height stays constant)
             SpatialPanel(
                 modifier = SubspaceModifier
@@ -406,8 +409,9 @@ fun HomeScreenSpatialPanelsAnimated(
 }
 
 /**
- * Three separate spatial panels for XR mode using SpatialRow (non-animated version)
+ * Three separate spatial panels for XR mode using SpatialCurvedRow (non-animated version)
  * Each panel is independently positioned and can be moved/dragged separately
+ * The panels are arranged in a curved arc for better viewing in XR space
  * This is called directly from ApplicationSubspace - NOT wrapped in nested Subspace
  */
 @SuppressLint("RestrictedApi")
@@ -417,7 +421,9 @@ fun HomeScreenSpatialPanels(
     onAction: (HomeAction) -> Unit
 ) {
     if (uiState is HomeUiState.Success && uiState.selectedPost != null) {
-        SpatialRow {
+        SpatialCurvedRow(
+            curveRadius = 1200.dp
+        ) {
             // Left panel - Compact posts list (small)
             SpatialPanel(
                 modifier = SubspaceModifier
