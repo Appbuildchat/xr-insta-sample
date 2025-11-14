@@ -9,6 +9,7 @@ data class Reel(
     val username: String,
     val userProfileImageUrl: String? = null,
     val videoUrl: String,
+    val videoResId: Int? = null, // Raw resource ID for local stereo videos
     val thumbnailUrl: String? = null,
     val caption: String? = null,
     val likeCount: Int = 0,
