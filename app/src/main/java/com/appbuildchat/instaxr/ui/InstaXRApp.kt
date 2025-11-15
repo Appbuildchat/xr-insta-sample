@@ -207,7 +207,9 @@ fun SpatialContent(onRequestHomeSpaceMode: () -> Unit) {
                 dragPolicy = MovePolicy(isEnabled = true),
                 resizePolicy = ResizePolicy(isEnabled = false)
             ) {
-                Surface {
+                Surface(
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+                ) {
                     com.appbuildchat.instaxr.ui.messages.MessagesContent(
                         uiState = messagesUiState,
                         onAction = messagesViewModel::handleAction

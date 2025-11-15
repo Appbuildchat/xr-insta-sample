@@ -160,7 +160,9 @@ fun MessagesScreenSpatialPanels(
             dragPolicy = MovePolicy(isEnabled = true),
             resizePolicy = ResizePolicy(isEnabled = false)
         ) {
-            Surface {
+            Surface(
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 1.0f)
+            ) {
                 ChatListPanel(
                     chats = uiState.chats,
                     onChatClick = { chatId -> onAction(MessagesAction.SelectChat(chatId)) }
@@ -177,7 +179,8 @@ fun MessagesScreenSpatialPanels(
             resizePolicy = ResizePolicy(isEnabled = true)
         ) {
             Surface(
-                modifier = Modifier.fillMaxSize().alpha(animatedAlpha.value)
+                modifier = Modifier.fillMaxSize().alpha(animatedAlpha.value),
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.75f)
             ) {
                 ChatDetailPanel(
                     chat = uiState.selectedChat,
@@ -260,18 +263,41 @@ private fun ChatListItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Profile image
-            AsyncImage(
-                model = ImageRequest.Builder(context)
-                    .data("file:///android_asset/mock_data/${chat.profileImage}")
-                    .crossfade(true)
-                    .size(Size.ORIGINAL)
-                    .build(),
-                contentDescription = "Profile picture of ${chat.displayName}",
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(CircleShape),
-                contentScale = ContentScale.Crop
+            val resourceId = context.resources.getIdentifier(
+                chat.profileImage.substringBeforeLast("."),
+                "drawable",
+                context.packageName
             )
+
+            if (resourceId != 0) {
+                AsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(resourceId)
+                        .crossfade(true)
+                        .size(Size.ORIGINAL)
+                        .build(),
+                    contentDescription = "Profile picture of ${chat.displayName}",
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                // Fallback placeholder
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = chat.displayName.first().uppercaseChar().toString(),
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+            }
 
             // Chat info
             Column(
@@ -410,7 +436,10 @@ private fun ChatDetailPanel(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(messages, key = { it.id }) { message ->
-                MessageBubble(message = message)
+                MessageBubble(
+                    message = message,
+                    profileImage = chat?.profileImage
+                )
             }
         }
 
@@ -477,15 +506,58 @@ private fun ChatDetailPanel(
 @Composable
 private fun MessageBubble(
     message: Message,
+    profileImage: String? = null,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val isMe = message.isMe
     val dateFormat = remember { SimpleDateFormat("h:mm a", Locale.getDefault()) }
 
     Row(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = if (isMe) Arrangement.End else Arrangement.Start
+        horizontalArrangement = if (isMe) Arrangement.End else Arrangement.Start,
+        verticalAlignment = Alignment.Bottom
     ) {
+        // Profile photo for other person's messages (on the left)
+        if (!isMe && profileImage != null) {
+            val resourceId = context.resources.getIdentifier(
+                profileImage.substringBeforeLast("."),
+                "drawable",
+                context.packageName
+            )
+
+            if (resourceId != 0) {
+                AsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(resourceId)
+                        .crossfade(true)
+                        .size(Size.ORIGINAL)
+                        .build(),
+                    contentDescription = "Profile picture",
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                // Fallback placeholder
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "?",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+        }
+
         Column(
             horizontalAlignment = if (isMe) Alignment.End else Alignment.Start,
             verticalArrangement = Arrangement.spacedBy(4.dp),
