@@ -95,12 +95,7 @@ internal fun MessagesContent(
 ) {
     when (uiState) {
         is MessagesUiState.Loading -> {
-            Box(
-                modifier = modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
+            // Transparent loading - no spinner
         }
         is MessagesUiState.Success -> {
             // Just show chat list (spatial panels handled at app level)
@@ -133,16 +128,7 @@ fun MessagesScreenSpatialPanels(
 ) {
     android.util.Log.d("MessagesScreen", "MessagesScreenSpatialPanels called with selectedChat: ${uiState.selectedChat?.displayName}")
 
-    // Animate alpha for chat detail panel (fade in effect)
-    val animatedAlpha = remember { Animatable(0f) }
-    LaunchedEffect(Unit) {
-        launch {
-            animatedAlpha.animateTo(
-                1f,
-                animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing)
-            )
-        }
-    }
+    // No animations - immediate transition
 
     SpatialRow {
         // Left panel: Chat list (shrunken to 250dp)
@@ -172,7 +158,7 @@ fun MessagesScreenSpatialPanels(
             resizePolicy = ResizePolicy(isEnabled = true)
         ) {
             Surface(
-                modifier = Modifier.fillMaxSize().alpha(animatedAlpha.value),
+                modifier = Modifier.fillMaxSize(),
                 color = MaterialTheme.colorScheme.surface.copy(alpha = 0.75f)
             ) {
                 ChatDetailPanel(

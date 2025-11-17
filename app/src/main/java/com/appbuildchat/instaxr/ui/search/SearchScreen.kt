@@ -28,6 +28,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.ColorPainter
 import eu.wewox.minabox.MinaBox
 import eu.wewox.minabox.MinaBoxItem
 import eu.wewox.minabox.rememberSaveableMinaBoxState
@@ -164,7 +165,7 @@ internal fun SearchContent(
     ) {
         when (uiState) {
             is SearchUiState.Loading -> {
-                CircularProgressIndicator()
+                // Transparent loading - no spinner
             }
             is SearchUiState.Success -> {
                 Column(modifier = Modifier.fillMaxSize()) {
@@ -419,8 +420,12 @@ private fun HexagonalGridItem(
                     .crossfade(true)
                     .build(),
                 contentDescription = "Explore item",
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Transparent),
+                contentScale = ContentScale.Crop,
+                placeholder = ColorPainter(Color.Transparent),
+                error = ColorPainter(Color.Transparent)
             )
         } else {
             Box(
@@ -526,23 +531,7 @@ fun SearchFullSpaceContent(
 
     when (uiState) {
         is SearchUiState.Loading -> {
-            // Show loading in a simple spatial panel
-            SpatialPanel(
-                modifier = SubspaceModifier
-                    .width(600.dp)
-                    .height(400.dp),
-                dragPolicy = MovePolicy(isEnabled = true),
-                resizePolicy = ResizePolicy(isEnabled = true)
-            ) {
-                Surface {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
-                    }
-                }
-            }
+            // Transparent loading - no panel or spinner
         }
         is SearchUiState.Success -> {
             val hasFocusedItem = uiState.focusedItem != null
@@ -634,12 +623,7 @@ internal fun SearchSpatialContent(
 
     when (uiState) {
         is SearchUiState.Loading -> {
-            Box(
-                modifier = modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
+            // Transparent loading - no spinner
         }
         is SearchUiState.Success -> {
             val isExpanded = uiState.selectedItem != null
@@ -917,7 +901,11 @@ private fun LargeItemPreview(
                     .build(),
                 contentDescription = null,
                 contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Transparent),
+                placeholder = ColorPainter(Color.Transparent),
+                error = ColorPainter(Color.Transparent)
             )
         } else {
             Text("Image not found", color = MaterialTheme.colorScheme.onSurface)
