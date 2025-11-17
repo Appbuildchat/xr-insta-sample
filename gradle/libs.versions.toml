@@ -16,6 +16,7 @@ kotlinAndroid = "2.1.0"
 androidxLifecycle = "2.9.3"
 androidxNavigation = "2.9.3"
 hilt = "2.51.1"
+minabox = "1.10.0"
 
 [libraries]
 androidx-arcore = { module = "androidx.xr.arcore:arcore", version.ref = "arcore" }
@@ -38,6 +39,7 @@ androidx-navigation-compose = { module = "androidx.navigation:navigation-compose
 hilt-android = { module = "com.google.dagger:hilt-android", version.ref = "hilt" }
 hilt-compiler = { module = "com.google.dagger:hilt-compiler", version.ref = "hilt" }
 hilt-navigation-compose = { module = "androidx.hilt:hilt-navigation-compose", version = "1.2.0" }
+minabox = { module = "io.github.oleksandrbalan:minabox", version.ref = "minabox" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

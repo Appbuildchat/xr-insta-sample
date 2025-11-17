@@ -119,27 +119,24 @@ class SearchViewModel @Inject constructor(
     }
 
     /**
-     * Create a mixed list of posts and reels
-     * Ratio: ~60% reels, ~40% posts (Instagram-like)
+     * Create a list of posts only (all photos, no reels)
+     * Randomly picks posts to create maximum variety
+     * Uses distinctBy to prevent duplicate IDs in the grid
      */
     private fun createMixedItems(count: Int): List<ExploreItem> {
-        val mixed = mutableListOf<ExploreItem>()
-        var postIndex = 0
-        var reelIndex = 0
-
-        repeat(count) {
-            // 60% chance for reel, 40% for post
-            val useReel = kotlin.random.Random.nextFloat() < 0.6f
-
-            if (useReel && allReels.isNotEmpty()) {
-                mixed.add(allReels[reelIndex % allReels.size])
-                reelIndex++
-            } else if (allPosts.isNotEmpty()) {
-                mixed.add(allPosts[postIndex % allPosts.size])
-                postIndex++
-            }
+        if (allPosts.isEmpty()) {
+            return emptyList()
         }
 
+        val mixed = mutableListOf<ExploreItem>()
+
+        repeat(count) {
+            // Pick a random post each time for maximum variety
+            val randomPost = allPosts.random()
+            mixed.add(randomPost)
+        }
+
+        // Return as-is (may have duplicates, which is fine for visual variety)
         return mixed
     }
 

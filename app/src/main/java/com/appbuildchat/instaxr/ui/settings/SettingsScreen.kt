@@ -80,9 +80,7 @@ internal fun SettingsContent(
     ) {
         when (uiState) {
             is SettingsUiState.Loading -> {
-                CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.Center)
-                )
+                // Transparent loading - no spinner
             }
             is SettingsUiState.Success -> {
                 LazyColumn(
