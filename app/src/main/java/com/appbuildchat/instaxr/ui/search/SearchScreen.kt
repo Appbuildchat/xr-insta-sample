@@ -9,18 +9,28 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import eu.wewox.minabox.MinaBox
+import eu.wewox.minabox.MinaBoxItem
+import eu.wewox.minabox.rememberSaveableMinaBoxState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
@@ -73,6 +83,24 @@ import androidx.xr.compose.subspace.layout.height
 import androidx.xr.compose.subspace.layout.width
 import androidx.xr.compose.subspace.layout.offset
 import androidx.compose.foundation.shape.CornerSize
+import androidx.compose.foundation.shape.GenericShape
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.center
+import androidx.compose.animation.core.Animatable
+import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.platform.LocalDensity
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 import com.appbuildchat.instaxr.data.model.ExploreItem
 import com.appbuildchat.instaxr.ui.components.CompactInfiniteGrid
 import com.appbuildchat.instaxr.ui.components.InfiniteGrid
@@ -166,6 +194,255 @@ internal fun SearchContent(
                 Text("Error: ${uiState.message}")
             }
         }
+    }
+}
+
+/**
+ * MinaBox 2D scrollable grid for XR Full Space mode - Single SpatialPanel
+ * Following the pattern from https://github.com/oleksandrbalan/minabox
+ */
+@Composable
+private fun MinaBoxSpatialGrid(
+    exploreItems: List<ExploreItem>,
+    onItemClick: (ExploreItem) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val density = LocalDensity.current
+
+    // Hexagon configuration - EVEN BIGGER tiles, TONS of rows for vertical scrolling
+    val polygonRadius = 200.dp // EVEN BIGGER hexagons!
+    val verticesCount = 6
+    val columnsCount = 10 // Moderate columns for horizontal scrolling
+    val rowsCount = 200 // TONS of rows for maximum vertical scrolling!
+
+    val halfHeight = polygonRadius * cos(PI / verticesCount).toFloat()
+
+    val itemSize = with(density) {
+        Size(
+            width = polygonRadius.toPx() * 2f,
+            height = halfHeight.toPx() * 2f,
+        )
+    }
+
+    // Single large SpatialPanel with transparent background
+    SpatialPanel(
+        modifier = SubspaceModifier
+            .width(1400.dp)
+            .height(1000.dp),
+        dragPolicy = MovePolicy(isEnabled = true),
+        resizePolicy = ResizePolicy(isEnabled = true)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Transparent)
+        ) {
+            // Search bar at top (fixed position, outside MinaBox)
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(80.dp)
+                    .align(Alignment.TopCenter)
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                shape = RoundedCornerShape(24.dp),
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                tonalElevation = 3.dp,
+                shadowElevation = 8.dp
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 24.dp, vertical = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Search",
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.size(32.dp)
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text(
+                        text = "Search...",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
+                }
+            }
+
+            // MinaBox for scrollable grid below search bar
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = 100.dp) // Space for search bar
+            ) {
+                val scope = rememberCoroutineScope()
+                val state = rememberSaveableMinaBoxState()
+                MinaBox(
+                    state = state
+                ) {
+                    // Hexagonal grid items
+                    items(
+                        count = exploreItems.size.coerceAtMost(columnsCount * rowsCount),
+                        layoutInfo = { index ->
+                            val column = index % columnsCount
+                            val row = index / columnsCount
+                            val xOffset = itemSize.width * 0.75f
+                            val yOffset = itemSize.height * 0.5f
+                            MinaBoxItem(
+                                x = 0f + column * xOffset,
+                                y = (if (column % 2 == 1) yOffset else 0f) + row * itemSize.height,
+                                width = itemSize.width,
+                                height = itemSize.height,
+                            )
+                        }
+                ) { index ->
+                        HexagonalGridItem(
+                            item = exploreItems[index],
+                            onClick = { onItemClick(exploreItems[index]) }
+                        )
+                    }
+            }
+            }
+        }
+    }
+}
+
+/**
+ * Hexagonal grid item with image inside
+ */
+@Composable
+private fun HexagonalGridItem(
+    item: ExploreItem,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    val rotation = remember { Animatable(-15f) }
+    val scale = remember { Animatable(0.5f) }
+
+    LaunchedEffect(Unit) {
+        delay(100)
+        launch {
+            scale.animateTo(1f)
+        }
+        launch {
+            rotation.animateTo(0f)
+        }
+    }
+
+    Box(
+        modifier = modifier
+            .scale(scale.value)
+            .rotate(rotation.value)
+            .clip(
+                GenericShape { size, _ ->
+                    addPath(size.createHexagonPath())
+                }
+            )
+            .clickable(onClick = onClick)
+    ) {
+        // Image
+        val resourceId = context.resources.getIdentifier(
+            item.thumbnailUrl.substringBeforeLast("."),
+            "drawable",
+            context.packageName
+        )
+
+        if (resourceId != 0) {
+            AsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(resourceId)
+                    .size(600)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = "Explore item",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "No Image",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        // Hexagon border
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .drawBehind {
+                    val path = size.createHexagonPath()
+                    drawPath(path, Color.White, style = Stroke(8f))
+                }
+        )
+
+        // Stats overlay
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .background(Color.Black.copy(alpha = 0.7f))
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.Favorite,
+                contentDescription = "Likes",
+                tint = Color.White,
+                modifier = Modifier.size(20.dp)
+            )
+            Text(
+                text = formatCount(item.likeCount),
+                style = MaterialTheme.typography.titleSmall,
+                color = Color.White,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+/**
+ * Create hexagon path
+ */
+private fun Size.createHexagonPath(): Path =
+    Path().apply {
+        val radius = width / 2f
+
+        fun lineTo(angle: Double) {
+            lineTo(
+                x = center.x + radius * cos(angle).toFloat(),
+                y = center.y + radius * sin(angle).toFloat(),
+            )
+        }
+
+        moveTo(0f, center.y)
+        lineTo(-2f * PI / 3f)
+        lineTo(-1f * PI / 3f)
+        lineTo(width, center.y)
+        lineTo(1f * PI / 3f)
+        lineTo(2f * PI / 3f)
+        close()
+    }
+
+/**
+ * Format count for display (e.g., 1.2K, 15.3K, etc.)
+ */
+private fun formatCount(count: Int): String {
+    return when {
+        count < 1000 -> count.toString()
+        count < 10000 -> String.format("%.1fK", count / 1000.0)
+        else -> String.format("%.0fK", count / 1000.0)
     }
 }
 
@@ -304,13 +581,11 @@ internal fun SearchSpatialContent(
                         )
                     }
                     else -> {
-                        FullSpaceSphericalView(
+                        // NEW: Single SpatialPanel with MinaBox 2D scrolling grid
+                        MinaBoxSpatialGrid(
                             exploreItems = uiState.exploreItems,
-                            viewportRotation = uiState.viewportRotation,
-                            focusedItem = uiState.focusedItem,
-                            onAction = onAction,
-                            modifier = modifier,
-                            isSearching = uiState.isSearching
+                            onItemClick = { item -> onAction(SearchAction.SelectItem(item)) },
+                            modifier = modifier
                         )
                     }
                 }
