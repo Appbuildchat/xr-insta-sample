@@ -55,6 +55,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.material3.IconButton
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -224,8 +225,10 @@ private fun MinaBoxSpatialGrid(
         )
     }
 
-    // Single large SpatialPanel with transparent background
-    SpatialPanel(
+    // Subspace containing both SpatialPanel and Orbiter
+    Subspace {
+        // SpatialPanel with hexagonal grid
+        SpatialPanel(
         modifier = SubspaceModifier
             .width(1400.dp)
             .height(1000.dp),
@@ -237,50 +240,13 @@ private fun MinaBoxSpatialGrid(
                 .fillMaxSize()
                 .background(Color.Transparent)
         ) {
-            // Search bar at top (fixed position, outside MinaBox)
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(80.dp)
-                    .align(Alignment.TopCenter)
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                shape = RoundedCornerShape(24.dp),
-                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-                tonalElevation = 3.dp,
-                shadowElevation = 8.dp
+            // MinaBox for scrollable hexagonal grid - full size!
+            val scope = rememberCoroutineScope()
+            val state = rememberSaveableMinaBoxState()
+            MinaBox(
+                state = state,
+                modifier = Modifier.fillMaxSize()
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 24.dp, vertical = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = "Search",
-                        tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.size(32.dp)
-                    )
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Text(
-                        text = "Search...",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                    )
-                }
-            }
-
-            // MinaBox for scrollable grid below search bar
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(top = 100.dp) // Space for search bar
-            ) {
-                val scope = rememberCoroutineScope()
-                val state = rememberSaveableMinaBoxState()
-                MinaBox(
-                    state = state
-                ) {
                     // Hexagonal grid items
                     items(
                         count = exploreItems.size.coerceAtMost(columnsCount * rowsCount),
@@ -302,8 +268,67 @@ private fun MinaBoxSpatialGrid(
                             onClick = { onItemClick(exploreItems[index]) }
                         )
                     }
+                }
             }
-            }
+        }
+    }
+
+    // Interactive search bar as Orbiter at the top - better for XR!
+    var searchText by remember { mutableStateOf("") }
+
+    Orbiter(
+        position = ContentEdge.Top,
+        alignment = Alignment.CenterHorizontally,
+        offset = 16.dp
+    ) {
+        Surface(
+            modifier = Modifier
+                .width(700.dp)
+                .height(80.dp),
+            shape = RoundedCornerShape(40.dp),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+            tonalElevation = 3.dp,
+            shadowElevation = 8.dp
+        ) {
+            OutlinedTextField(
+                value = searchText,
+                onValueChange = { searchText = it },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                placeholder = {
+                    Text(
+                        text = "Search...",
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Search",
+                        modifier = Modifier.size(32.dp)
+                    )
+                },
+                trailingIcon = if (searchText.isNotEmpty()) {
+                    {
+                        IconButton(onClick = { searchText = "" }) {
+                            Icon(
+                                imageVector = Icons.Default.Send,
+                                contentDescription = "Clear",
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
+                    }
+                } else null,
+                singleLine = true,
+                textStyle = MaterialTheme.typography.titleLarge,
+                colors = androidx.compose.material3.TextFieldDefaults.colors(
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent,
+                    disabledContainerColor = Color.Transparent,
+                ),
+                shape = RoundedCornerShape(40.dp)
+            )
         }
     }
 }

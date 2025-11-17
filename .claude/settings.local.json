@@ -25,7 +25,8 @@
       "Bash(~/Library/Android/sdk/platform-tools/adb logcat -s \"InstaXR\" -d)",
       "Bash(~/Library/Android/sdk/platform-tools/adb logcat -t 100)",
       "Bash(~/Library/Android/sdk/platform-tools/adb:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []
