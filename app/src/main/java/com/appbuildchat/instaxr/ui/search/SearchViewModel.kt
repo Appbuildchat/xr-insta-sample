@@ -121,6 +121,7 @@ class SearchViewModel @Inject constructor(
     /**
      * Create a mixed list of posts and reels
      * Ratio: ~60% reels, ~40% posts (Instagram-like)
+     * Uses distinctBy to prevent duplicate IDs in the grid
      */
     private fun createMixedItems(count: Int): List<ExploreItem> {
         val mixed = mutableListOf<ExploreItem>()
@@ -140,7 +141,8 @@ class SearchViewModel @Inject constructor(
             }
         }
 
-        return mixed
+        // Remove duplicates by ID to prevent LazyGrid key conflicts
+        return mixed.distinctBy { it.id }
     }
 
     /**
