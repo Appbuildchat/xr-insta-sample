@@ -24,7 +24,9 @@
       "Bash(~/Library/Android/sdk/platform-tools/adb shell am start -n com.appbuildchat.instaxr/.MainActivity)",
       "Bash(~/Library/Android/sdk/platform-tools/adb logcat -s \"InstaXR\" -d)",
       "Bash(~/Library/Android/sdk/platform-tools/adb logcat -t 100)",
-      "Bash(~/Library/Android/sdk/platform-tools/adb:*)"
+      "Bash(~/Library/Android/sdk/platform-tools/adb:*)",
+      "WebSearch",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []

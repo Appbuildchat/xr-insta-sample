@@ -92,20 +92,20 @@ fun SpatialContent(onRequestHomeSpaceMode: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val activity = context as? androidx.activity.ComponentActivity
 
-    // Check if we're on home route or floating orbs route
     // Check if we're on home, reels, story, messages, profile, search, or reels dome route
     val isHomeRoute = currentRoute == AppRoutes.HOME
     val isFloatingOrbsRoute = currentRoute == AppRoutes.FLOATING_ORBS
     val isReelsRoute = currentRoute == AppRoutes.REELS
     val isReelsDomeRoute = currentRoute == AppRoutes.REELS_DOME
     val isStoryRoute = currentRoute == AppRoutes.STORY
+    val isPostViewerRoute = currentRoute == AppRoutes.POST_VIEWER
     val isMessagesRoute = currentRoute == AppRoutes.MESSAGES
     val isMyPageRoute = currentRoute == AppRoutes.MY_PAGE
     val isSearchRoute = currentRoute == AppRoutes.SEARCH
 
     // Get activity-scoped HomeViewModel (same instance as HomeScreen uses)
     val homeViewModel: com.appbuildchat.instaxr.ui.home.HomeViewModel? =
-        if (isHomeRoute && activity != null) {
+        if ((isHomeRoute || isPostViewerRoute || isSearchRoute) && activity != null) {
             androidx.hilt.navigation.compose.hiltViewModel(viewModelStoreOwner = activity)
         } else null
 
@@ -310,6 +310,37 @@ fun SpatialContent(onRequestHomeSpaceMode: () -> Unit) {
                 )
             }
         }
+    } else if (isPostViewerRoute && homeViewModel != null && homeUiState is com.appbuildchat.instaxr.ui.home.HomeUiState.Success && homeUiState.selectedPost != null) {
+        // POST VIEWER STATE: Full screen post view (like stories)
+        com.appbuildchat.instaxr.ui.home.PostViewerSpatialContent(
+            post = homeUiState.selectedPost,
+            onClose = {
+                homeViewModel.handleAction(com.appbuildchat.instaxr.ui.home.HomeAction.DeselectPost)
+                navController.navigateSingleTopTo(AppRoutes.SEARCH)
+            },
+            onLike = { homeViewModel.handleAction(com.appbuildchat.instaxr.ui.home.HomeAction.LikePost(homeUiState.selectedPost.id)) }
+        )
+
+        // Show single back button orbiter (bigger round button)
+        Orbiter(
+            position = ContentEdge.Bottom,
+            offset = 100.dp,
+            alignment = Alignment.CenterHorizontally
+        ) {
+            FilledTonalIconButton(
+                onClick = {
+                    homeViewModel.handleAction(com.appbuildchat.instaxr.ui.home.HomeAction.DeselectPost)
+                    navController.navigateSingleTopTo(AppRoutes.SEARCH)
+                },
+                modifier = Modifier.size(72.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Back to Search",
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+        }
     } else if (isMyPageRoute && profileViewModel != null && profileUiState != null) {
         // MY PAGE STATE: Profile screen with two states (collapsed/expanded)
         com.appbuildchat.instaxr.ui.profile.ProfileSpatialContent(
@@ -438,7 +469,9 @@ fun SpatialContent(onRequestHomeSpaceMode: () -> Unit) {
         // SEARCH STATE: Spatial search screen
         com.appbuildchat.instaxr.ui.search.SearchSpatialContent(
             uiState = searchUiState,
-            onAction = searchViewModel::handleAction
+            onAction = searchViewModel::handleAction,
+            navController = navController,
+            homeViewModel = homeViewModel
         )
 
         // Show navigation orbiter

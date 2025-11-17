@@ -1,26 +1,37 @@
 package com.appbuildchat.instaxr.ui.search
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.ColorPainter
+import eu.wewox.minabox.MinaBox
+import eu.wewox.minabox.MinaBoxItem
+import eu.wewox.minabox.rememberSaveableMinaBoxState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
@@ -45,6 +56,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.material3.IconButton
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -73,6 +85,24 @@ import androidx.xr.compose.subspace.layout.height
 import androidx.xr.compose.subspace.layout.width
 import androidx.xr.compose.subspace.layout.offset
 import androidx.compose.foundation.shape.CornerSize
+import androidx.compose.foundation.shape.GenericShape
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.center
+import androidx.compose.animation.core.Animatable
+import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.platform.LocalDensity
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 import com.appbuildchat.instaxr.data.model.ExploreItem
 import com.appbuildchat.instaxr.ui.components.CompactInfiniteGrid
 import com.appbuildchat.instaxr.ui.components.InfiniteGrid
@@ -82,6 +112,7 @@ import com.appbuildchat.instaxr.ui.search.components.ExploreGridItem
 import com.appbuildchat.instaxr.ui.search.components.SphericalExploreGrid
 import com.appbuildchat.instaxr.ui.search.components.FocusedItemView
 import com.appbuildchat.instaxr.ui.search.xrGestures
+import com.appbuildchat.instaxr.ui.navigateSingleTopTo
 
 /**
  * Top-level composable for the Search/Explore feature screen
@@ -134,7 +165,7 @@ internal fun SearchContent(
     ) {
         when (uiState) {
             is SearchUiState.Loading -> {
-                CircularProgressIndicator()
+                // Transparent loading - no spinner
             }
             is SearchUiState.Success -> {
                 Column(modifier = Modifier.fillMaxSize()) {
@@ -170,6 +201,317 @@ internal fun SearchContent(
 }
 
 /**
+ * MinaBox 2D scrollable grid for XR Full Space mode - Single SpatialPanel
+ * Following the pattern from https://github.com/oleksandrbalan/minabox
+ */
+@Composable
+private fun MinaBoxSpatialGrid(
+    exploreItems: List<ExploreItem>,
+    onItemClick: (ExploreItem) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val density = LocalDensity.current
+
+    // Interactive search bar state - hoisted to function level
+    var searchText by remember { mutableStateOf("") }
+
+    // Shuffle trigger - incremented on submit to trigger recomposition
+    var shuffleTrigger by remember { mutableStateOf(0) }
+
+    // Shuffled items list - reshuffled on each submit
+    val shuffledItems = remember(shuffleTrigger) {
+        exploreItems.shuffled()
+    }
+
+    // Hexagon configuration - EVEN BIGGER tiles, MASSIVE rows for vertical scrolling
+    val polygonRadius = 200.dp // EVEN BIGGER hexagons!
+    val verticesCount = 6
+    val columnsCount = 10 // Moderate columns for horizontal scrolling
+    val rowsCount = 500 // MASSIVE vertical scrolling - 500 rows!
+
+    val halfHeight = polygonRadius * cos(PI / verticesCount).toFloat()
+
+    val itemSize = with(density) {
+        Size(
+            width = polygonRadius.toPx() * 2f,
+            height = halfHeight.toPx() * 2f,
+        )
+    }
+
+    // Subspace containing both SpatialPanel and Orbiter
+    Subspace {
+        // SpatialPanel with hexagonal grid
+        SpatialPanel(
+        modifier = SubspaceModifier
+            .width(1400.dp)
+            .height(1000.dp),
+        dragPolicy = MovePolicy(isEnabled = true),
+        resizePolicy = ResizePolicy(isEnabled = true)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Transparent)
+        ) {
+
+            // MinaBox for scrollable hexagonal grid - full size!
+            val scope = rememberCoroutineScope()
+            val state = rememberSaveableMinaBoxState()
+
+            // Key for triggering hexagon reload on submit (when shuffleTrigger changes)
+            androidx.compose.runtime.key(shuffleTrigger) {
+                MinaBox(
+                    state = state,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    // Hexagonal grid items - fill ALL rows by cycling through shuffled items
+                    val totalItems = columnsCount * rowsCount
+                    items(
+                        count = totalItems,
+                        layoutInfo = { index ->
+                            val column = index % columnsCount
+                            val row = index / columnsCount
+                            // Increased spacing for more distance between hexagons
+                            val xOffset = itemSize.width * 0.9f  // More horizontal spacing
+                            val yOffset = itemSize.height * 0.65f  // More vertical offset
+                            val spacingMultiplier = 1.2f  // Additional spacing factor
+                            MinaBoxItem(
+                                x = 0f + column * xOffset,
+                                y = (if (column % 2 == 1) yOffset else 0f) + row * itemSize.height * spacingMultiplier,
+                                width = itemSize.width,
+                                height = itemSize.height,
+                            )
+                        }
+                ) { index ->
+                        // Cycle through shuffled items to fill all 5000 hexagons
+                        val item = shuffledItems[index % shuffledItems.size]
+                        HexagonalGridItem(
+                            item = item,
+                            onClick = { onItemClick(item) }
+                        )
+                    }
+                }
+            }
+            }
+
+            // Interactive search bar as Orbiter at the top - better for XR!
+            Orbiter(
+                position = ContentEdge.Top,
+                alignment = Alignment.CenterHorizontally,
+                offset = 16.dp
+            ) {
+                Surface(
+                    modifier = Modifier
+                        .width(700.dp)
+                        .height(80.dp),
+                    shape = RoundedCornerShape(40.dp),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                    tonalElevation = 3.dp,
+                    shadowElevation = 8.dp
+                ) {
+                    OutlinedTextField(
+                        value = searchText,
+                        onValueChange = { newText ->
+                            searchText = newText
+                        },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                placeholder = {
+                    Text(
+                        text = "Search...",
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Search",
+                        modifier = Modifier.size(32.dp)
+                    )
+                },
+                trailingIcon = if (searchText.isNotEmpty()) {
+                    {
+                        IconButton(onClick = {
+                            // Trigger shuffle and reload on submit
+                            shuffleTrigger++
+                            searchText = ""
+                        }) {
+                            Icon(
+                                imageVector = Icons.Default.Send,
+                                contentDescription = "Submit search",
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
+                    }
+                } else null,
+                singleLine = true,
+                textStyle = MaterialTheme.typography.titleLarge,
+                colors = androidx.compose.material3.TextFieldDefaults.colors(
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent,
+                    disabledContainerColor = Color.Transparent,
+                ),
+                shape = RoundedCornerShape(40.dp),
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    imeAction = androidx.compose.ui.text.input.ImeAction.Search
+                ),
+                keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                    onSearch = {
+                        // Trigger shuffle and reload on Enter key
+                        shuffleTrigger++
+                    }
+                )
+            )
+        }
+            }
+        }
+    }
+}
+
+/**
+ * Hexagonal grid item with image inside
+ */
+@Composable
+private fun HexagonalGridItem(
+    item: ExploreItem,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    val rotation = remember { Animatable(-15f) }
+    val scale = remember { Animatable(0.5f) }
+
+    LaunchedEffect(Unit) {
+        delay(100)
+        launch {
+            scale.animateTo(1f)
+        }
+        launch {
+            rotation.animateTo(0f)
+        }
+    }
+
+    Box(
+        modifier = modifier
+            .scale(scale.value)
+            .rotate(rotation.value)
+            .clip(
+                GenericShape { size, _ ->
+                    addPath(size.createHexagonPath())
+                }
+            )
+            .clickable(onClick = onClick)
+    ) {
+        // Image
+        val resourceId = context.resources.getIdentifier(
+            item.thumbnailUrl.substringBeforeLast("."),
+            "drawable",
+            context.packageName
+        )
+
+        if (resourceId != 0) {
+            AsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(resourceId)
+                    .size(600)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = "Explore item",
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Transparent),
+                contentScale = ContentScale.Crop,
+                placeholder = ColorPainter(Color.Transparent),
+                error = ColorPainter(Color.Transparent)
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "No Image",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        // Hexagon border (transparent for seamless blending)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .drawBehind {
+                    val path = size.createHexagonPath()
+                    drawPath(path, Color.Transparent, style = Stroke(8f))
+                }
+        )
+
+        // Stats overlay
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .background(Color.Black.copy(alpha = 0.7f))
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.Favorite,
+                contentDescription = "Likes",
+                tint = Color.White,
+                modifier = Modifier.size(20.dp)
+            )
+            Text(
+                text = formatCount(item.likeCount),
+                style = MaterialTheme.typography.titleSmall,
+                color = Color.White,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+/**
+ * Create hexagon path
+ */
+private fun Size.createHexagonPath(): Path =
+    Path().apply {
+        val radius = width / 2f
+
+        fun lineTo(angle: Double) {
+            lineTo(
+                x = center.x + radius * cos(angle).toFloat(),
+                y = center.y + radius * sin(angle).toFloat(),
+            )
+        }
+
+        moveTo(0f, center.y)
+        lineTo(-2f * PI / 3f)
+        lineTo(-1f * PI / 3f)
+        lineTo(width, center.y)
+        lineTo(1f * PI / 3f)
+        lineTo(2f * PI / 3f)
+        close()
+    }
+
+/**
+ * Format count for display (e.g., 1.2K, 15.3K, etc.)
+ */
+private fun formatCount(count: Int): String {
+    return when {
+        count < 1000 -> count.toString()
+        count < 10000 -> String.format("%.1fK", count / 1000.0)
+        else -> String.format("%.0fK", count / 1000.0)
+    }
+}
+
+/**
  * Full Space Mode content rendered directly in ApplicationSubspace from InstaXRApp
  * Similar to HomeScreenSpatialPanelsAnimated
  */
@@ -189,23 +531,7 @@ fun SearchFullSpaceContent(
 
     when (uiState) {
         is SearchUiState.Loading -> {
-            // Show loading in a simple spatial panel
-            SpatialPanel(
-                modifier = SubspaceModifier
-                    .width(600.dp)
-                    .height(400.dp),
-                dragPolicy = MovePolicy(isEnabled = true),
-                resizePolicy = ResizePolicy(isEnabled = true)
-            ) {
-                Surface {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
-                    }
-                }
-            }
+            // Transparent loading - no panel or spinner
         }
         is SearchUiState.Success -> {
             val hasFocusedItem = uiState.focusedItem != null
@@ -263,7 +589,9 @@ internal fun SearchSpatialContent(
     uiState: SearchUiState,
     onAction: (SearchAction) -> Unit,
     modifier: Modifier = Modifier,
-    enableFullSpaceMode: Boolean = true // Re-enabled with simplified version
+    enableFullSpaceMode: Boolean = true, // Re-enabled with simplified version
+    navController: androidx.navigation.NavHostController? = null,
+    homeViewModel: com.appbuildchat.instaxr.ui.home.HomeViewModel? = null
 ) {
     val spatialConfiguration = LocalSpatialConfiguration.current
 
@@ -275,14 +603,27 @@ internal fun SearchSpatialContent(
         }
     }
 
+    // Handle item selection with navigation
+    val handleItemSelect: (com.appbuildchat.instaxr.data.model.ExploreItem) -> Unit = { item ->
+        android.util.Log.d("SearchScreen", "Item clicked: ${item::class.simpleName}, homeViewModel=$homeViewModel, navController=$navController")
+        when (item) {
+            is com.appbuildchat.instaxr.data.model.ExploreItem.PostItem -> {
+                android.util.Log.d("SearchScreen", "PostItem clicked, navigating to POST_VIEWER for post ${item.post.id}")
+                // Navigate to post viewer (full screen like stories)
+                homeViewModel?.handleAction(com.appbuildchat.instaxr.ui.home.HomeAction.SelectPost(item.post.id))
+                navController?.navigateSingleTopTo(com.appbuildchat.instaxr.ui.AppRoutes.POST_VIEWER)
+            }
+            is com.appbuildchat.instaxr.data.model.ExploreItem.ReelItem -> {
+                android.util.Log.d("SearchScreen", "ReelItem clicked")
+                // For now, just show in expanded view (could navigate to REELS in future)
+                onAction(SearchAction.SelectItem(item))
+            }
+        }
+    }
+
     when (uiState) {
         is SearchUiState.Loading -> {
-            Box(
-                modifier = modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
+            // Transparent loading - no spinner
         }
         is SearchUiState.Success -> {
             val isExpanded = uiState.selectedItem != null
@@ -304,13 +645,11 @@ internal fun SearchSpatialContent(
                         )
                     }
                     else -> {
-                        FullSpaceSphericalView(
+                        // NEW: Single SpatialPanel with MinaBox 2D scrolling grid
+                        MinaBoxSpatialGrid(
                             exploreItems = uiState.exploreItems,
-                            viewportRotation = uiState.viewportRotation,
-                            focusedItem = uiState.focusedItem,
-                            onAction = onAction,
-                            modifier = modifier,
-                            isSearching = uiState.isSearching
+                            onItemClick = handleItemSelect,
+                            modifier = modifier
                         )
                     }
                 }
@@ -324,6 +663,7 @@ internal fun SearchSpatialContent(
                                 exploreItems = uiState.exploreItems,
                                 selectedItem = uiState.selectedItem!!,
                                 onAction = onAction,
+                                onItemClick = handleItemSelect,
                                 modifier = modifier
                             )
                         }
@@ -332,6 +672,7 @@ internal fun SearchSpatialContent(
                             CollapsedExploreView(
                                 exploreItems = uiState.exploreItems,
                                 onAction = onAction,
+                                onItemClick = handleItemSelect,
                                 modifier = modifier
                             )
                         }
@@ -357,6 +698,7 @@ internal fun SearchSpatialContent(
 private fun CollapsedExploreView(
     exploreItems: List<ExploreItem>,
     onAction: (SearchAction) -> Unit,
+    onItemClick: (ExploreItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
     android.util.Log.d("SearchScreen", "CollapsedExploreView rendering with ${exploreItems.size} items")
@@ -404,7 +746,7 @@ private fun CollapsedExploreView(
                     ) { item ->
                         ExploreGridItem(
                             item = item,
-                            onClick = { onAction(SearchAction.SelectItem(item)) }
+                            onClick = { onItemClick(item) }
                         )
                     }
                 } else {
@@ -427,22 +769,44 @@ private fun ExpandedExploreView(
     exploreItems: List<ExploreItem>,
     selectedItem: ExploreItem,
     onAction: (SearchAction) -> Unit,
+    onItemClick: (ExploreItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val compactPanelWidth by animateDpAsState(targetValue = 300.dp, label = "compactPanelWidth")
-    val centerPanelWidth by animateDpAsState(targetValue = 900.dp, label = "centerPanelWidth")
-    val detailPanelWidth by animateDpAsState(targetValue = 400.dp, label = "detailPanelWidth")
+    // Smooth animated widths with spring animation
+    val compactPanelWidth by animateDpAsState(
+        targetValue = 300.dp,
+        animationSpec = spring(
+            dampingRatio = 0.8f,
+            stiffness = 300f
+        ),
+        label = "compactPanelWidth"
+    )
+    val centerPanelWidth by animateDpAsState(
+        targetValue = 900.dp,
+        animationSpec = spring(
+            dampingRatio = 0.8f,
+            stiffness = 300f
+        ),
+        label = "centerPanelWidth"
+    )
+    val detailPanelWidth by animateDpAsState(
+        targetValue = 400.dp,
+        animationSpec = spring(
+            dampingRatio = 0.8f,
+            stiffness = 300f
+        ),
+        label = "detailPanelWidth"
+    )
 
     SpatialRow {
         // Left: Compact grid
-        AnimatedVisibility(visible = true) {
-            SpatialPanel(
-                modifier = SubspaceModifier
-                    .width(compactPanelWidth)
-                    .height(900.dp),
-                dragPolicy = MovePolicy(isEnabled = true),
-                resizePolicy = ResizePolicy(isEnabled = false)
-            ) {
+        SpatialPanel(
+            modifier = SubspaceModifier
+                .width(compactPanelWidth)
+                .height(900.dp),
+            dragPolicy = MovePolicy(isEnabled = true),
+            resizePolicy = ResizePolicy(isEnabled = false)
+        ) {
                 Surface {
                     Column(
                         modifier = Modifier
@@ -471,48 +835,43 @@ private fun ExpandedExploreView(
                         ) { item ->
                             ExploreGridItem(
                                 item = item,
-                                onClick = { onAction(SearchAction.SelectItem(item)) }
+                                onClick = { onItemClick(item) }
                             )
                         }
                     }
                 }
             }
-        }
 
         // Center: Large image preview
-        AnimatedVisibility(visible = true) {
-            SpatialPanel(
-                modifier = SubspaceModifier
-                    .width(centerPanelWidth)
-                    .height(900.dp),
-                dragPolicy = MovePolicy(isEnabled = true),
-                resizePolicy = ResizePolicy(isEnabled = true)
-            ) {
-                Surface {
-                    LargeItemPreview(
-                        item = selectedItem,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
+        SpatialPanel(
+            modifier = SubspaceModifier
+                .width(centerPanelWidth)
+                .height(900.dp),
+            dragPolicy = MovePolicy(isEnabled = true),
+            resizePolicy = ResizePolicy(isEnabled = true)
+        ) {
+            Surface {
+                LargeItemPreview(
+                    item = selectedItem,
+                    modifier = Modifier.fillMaxSize()
+                )
             }
         }
 
         // Right: Details panel
-        AnimatedVisibility(visible = true) {
-            SpatialPanel(
-                modifier = SubspaceModifier
-                    .width(detailPanelWidth)
-                    .height(900.dp),
-                dragPolicy = MovePolicy(isEnabled = true),
-                resizePolicy = ResizePolicy(isEnabled = false)
-            ) {
-                Surface {
-                    ItemDetailsPanel(
-                        item = selectedItem,
-                        onAction = onAction,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
+        SpatialPanel(
+            modifier = SubspaceModifier
+                .width(detailPanelWidth)
+                .height(900.dp),
+            dragPolicy = MovePolicy(isEnabled = true),
+            resizePolicy = ResizePolicy(isEnabled = false)
+        ) {
+            Surface {
+                ItemDetailsPanel(
+                    item = selectedItem,
+                    onAction = onAction,
+                    modifier = Modifier.fillMaxSize()
+                )
             }
         }
     }
@@ -542,7 +901,11 @@ private fun LargeItemPreview(
                     .build(),
                 contentDescription = null,
                 contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Transparent),
+                placeholder = ColorPainter(Color.Transparent),
+                error = ColorPainter(Color.Transparent)
             )
         } else {
             Text("Image not found", color = MaterialTheme.colorScheme.onSurface)

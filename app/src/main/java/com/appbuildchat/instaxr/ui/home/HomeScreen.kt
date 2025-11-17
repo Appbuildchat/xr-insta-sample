@@ -1,6 +1,7 @@
 package com.appbuildchat.instaxr.ui.home
 
 import android.annotation.SuppressLint
+import androidx.compose.foundation.Image
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
@@ -104,23 +105,8 @@ internal fun HomeSpatialContent(
     Subspace {
         when (uiState) {
             is HomeUiState.Loading -> {
-                // Show loading in a simple spatial panel
-                SpatialPanel(
-                    modifier = SubspaceModifier
-                        .width(680.dp)
-                        .height(800.dp),
-                    dragPolicy = MovePolicy(isEnabled = true),
-                    resizePolicy = ResizePolicy(isEnabled = true)
-                ) {
-                    Surface {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator()
-                        }
-                    }
-                }
+                // Show transparent loading state - no visible panel
+                // Panel will appear once content loads
             }
             is HomeUiState.Success -> {
                 if (uiState.selectedPost != null) {
@@ -195,7 +181,7 @@ internal fun HomeContent(
     ) {
         when (uiState) {
             is HomeUiState.Loading -> {
-                CircularProgressIndicator()
+                // Transparent loading - no spinner
             }
             is HomeUiState.Success -> {
                 if (uiState.selectedPost != null) {
@@ -244,31 +230,13 @@ fun HomeScreenSpatialPanelsAnimated(
     onRemoveHeart: (String) -> Unit = {}
 ) {
     if (uiState is HomeUiState.Success && uiState.selectedPost != null) {
-        // Animate the left panel width from initial (680dp) to compact (250dp)
-        val leftPanelWidth by animateDpAsState(
-            targetValue = 250.dp,
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioMediumBouncy,
-                stiffness = Spring.StiffnessLow
-            ),
-            label = "leftPanelWidth"
-        )
-
-        // Animate alpha for center and right panels (fade in effect)
-        val animatedAlpha = remember { Animatable(0f) }
-        LaunchedEffect(Unit) {
-            launch {
-                animatedAlpha.animateTo(
-                    1f,
-                    animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing)
-                )
-            }
-        }
+        // No animations - immediate transition
+        val leftPanelWidth = 250.dp
 
         SpatialCurvedRow(
             curveRadius = 1200.dp
         ) {
-            // Left panel - Compact posts list with animated width shrinking (height stays constant)
+            // Left panel - Compact posts list (no animation)
             SpatialPanel(
                 modifier = SubspaceModifier
                     .width(leftPanelWidth)
@@ -308,7 +276,7 @@ fun HomeScreenSpatialPanelsAnimated(
                     resizePolicy = ResizePolicy(isEnabled = false)
                 ) {
                     Surface(
-                        modifier = Modifier.fillMaxSize().alpha(animatedAlpha.value)
+                        modifier = Modifier.fillMaxSize()
                     ) {
                         DescriptionAndCommentsPanel(
                             post = uiState.selectedPost,
@@ -325,7 +293,7 @@ fun HomeScreenSpatialPanelsAnimated(
                     ) {
                         FilledTonalIconButton(
                             onClick = { onAction(HomeAction.DeselectPost) },
-                            modifier = Modifier.size(48.dp).alpha(animatedAlpha.value)
+                            modifier = Modifier.size(48.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Close,
@@ -344,7 +312,7 @@ fun HomeScreenSpatialPanelsAnimated(
                     resizePolicy = ResizePolicy(isEnabled = true)
                 ) {
                     Surface(
-                        modifier = Modifier.fillMaxSize().alpha(animatedAlpha.value),
+                        modifier = Modifier.fillMaxSize(),
                         color = androidx.compose.ui.graphics.Color.Transparent
                     ) {
                         CentralImagePreview(
@@ -366,7 +334,7 @@ fun HomeScreenSpatialPanelsAnimated(
                     resizePolicy = ResizePolicy(isEnabled = true)
                 ) {
                     Surface(
-                        modifier = Modifier.fillMaxSize().alpha(animatedAlpha.value),
+                        modifier = Modifier.fillMaxSize(),
                         color = androidx.compose.ui.graphics.Color.Transparent
                     ) {
                         CentralImagePreview(
@@ -386,7 +354,7 @@ fun HomeScreenSpatialPanelsAnimated(
                     resizePolicy = ResizePolicy(isEnabled = false)
                 ) {
                     Surface(
-                        modifier = Modifier.fillMaxSize().alpha(animatedAlpha.value)
+                        modifier = Modifier.fillMaxSize()
                     ) {
                         DescriptionAndCommentsPanel(
                             post = uiState.selectedPost,
@@ -403,7 +371,7 @@ fun HomeScreenSpatialPanelsAnimated(
                     ) {
                         FilledTonalIconButton(
                             onClick = { onAction(HomeAction.DeselectPost) },
-                            modifier = Modifier.size(48.dp).alpha(animatedAlpha.value)
+                            modifier = Modifier.size(48.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Close,
@@ -678,15 +646,9 @@ private fun PostImage(
         Box(
             modifier = modifier
                 .fillMaxWidth()
-                .heightIn(min = 300.dp, max = 500.dp)
-                .background(MaterialTheme.colorScheme.surfaceVariant),
+                .heightIn(min = 300.dp, max = 500.dp),
             contentAlignment = Alignment.Center
         ) {
-            // Loading indicator shown while image loads
-            CircularProgressIndicator(
-                modifier = Modifier.size(48.dp)
-            )
-
             AsyncImage(
                 model = ImageRequest.Builder(context)
                     .data(resourceId)
@@ -698,11 +660,14 @@ private fun PostImage(
                 contentDescription = "Post image",
                 modifier = Modifier
                     .fillMaxSize()
+                    .background(androidx.compose.ui.graphics.Color.Transparent)
                     .then(
                         if (onClick != null) Modifier.clickable(onClick = onClick)
                         else Modifier
                     ),
-                contentScale = ContentScale.Crop
+                contentScale = ContentScale.Crop,
+                placeholder = androidx.compose.ui.graphics.painter.ColorPainter(androidx.compose.ui.graphics.Color.Transparent),
+                error = androidx.compose.ui.graphics.painter.ColorPainter(androidx.compose.ui.graphics.Color.Transparent)
             )
         }
     } else {
@@ -882,15 +847,9 @@ private fun CompactPostItem(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(1f) // Square aspect ratio
-                .clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp)) // More rounded corners
-                .background(MaterialTheme.colorScheme.surfaceVariant),
+                .clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp)), // More rounded corners
             contentAlignment = Alignment.Center
         ) {
-            // Loading indicator shown while image loads
-            CircularProgressIndicator(
-                modifier = Modifier.size(32.dp)
-            )
-
             AsyncImage(
                 model = ImageRequest.Builder(context)
                     .data(resourceId)
@@ -900,8 +859,12 @@ private fun CompactPostItem(
                     .diskCachePolicy(coil3.request.CachePolicy.ENABLED)
                     .build(),
                 contentDescription = "Post thumbnail",
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop // Fill the container
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(androidx.compose.ui.graphics.Color.Transparent),
+                contentScale = ContentScale.Crop, // Fill the container
+                placeholder = androidx.compose.ui.graphics.painter.ColorPainter(androidx.compose.ui.graphics.Color.Transparent),
+                error = androidx.compose.ui.graphics.painter.ColorPainter(androidx.compose.ui.graphics.Color.Transparent)
             )
 
             // Selection indicator overlay
@@ -982,19 +945,24 @@ private fun CentralImagePreview(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 8.dp)
-                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp)),
+                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp))
+                        .background(androidx.compose.ui.graphics.Color.Transparent),
                     contentScale = ContentScale.FillWidth,
                     loading = {
                         Box(
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(androidx.compose.ui.graphics.Color.Transparent),
                             contentAlignment = Alignment.Center
                         ) {
-                            CircularProgressIndicator()
+                            // Transparent placeholder - no spinner
                         }
                     },
                     error = {
                         Box(
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(androidx.compose.ui.graphics.Color.Transparent),
                             contentAlignment = Alignment.Center
                         ) {
                             Image(
@@ -1066,19 +1034,24 @@ private fun CentralImagePreview(
                 contentDescription = "Large post image",
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp)),
+                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp))
+                    .background(androidx.compose.ui.graphics.Color.Transparent),
                 contentScale = ContentScale.FillWidth,
                 loading = {
                     Box(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(androidx.compose.ui.graphics.Color.Transparent),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator()
+                        // Transparent placeholder - no spinner
                     }
                 },
                 error = {
                     Box(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(androidx.compose.ui.graphics.Color.Transparent),
                         contentAlignment = Alignment.Center
                     ) {
                         Image(
@@ -1380,6 +1353,202 @@ private fun formatCount(count: Int): String {
         count < 1000 -> count.toString()
         count < 10000 -> String.format("%.1fK", count / 1000.0)
         else -> String.format("%.0fK", count / 1000.0)
+    }
+}
+
+/**
+ * Full-screen post viewer (like story viewer)
+ * Displays a single post in an immersive view
+ */
+@SuppressLint("RestrictedApi")
+@Composable
+fun PostViewerSpatialContent(
+    post: Post,
+    onClose: () -> Unit,
+    onLike: () -> Unit
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    androidx.xr.compose.spatial.Subspace {
+        SpatialRow {
+            // Main image panel
+            SpatialPanel(
+                modifier = SubspaceModifier
+                    .width(1000.dp)
+                    .height(1000.dp),
+                dragPolicy = MovePolicy(isEnabled = true),
+                resizePolicy = ResizePolicy(isEnabled = true)
+            ) {
+                Surface(
+                    color = androidx.compose.ui.graphics.Color.Black
+                ) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        // Display post image using AsyncImage to prevent bitmap too large crash
+                        val resourceId = context.resources.getIdentifier(
+                            post.imageUrl.substringBeforeLast("."),
+                            "drawable",
+                            context.packageName
+                        )
+
+                        if (resourceId != 0) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(context)
+                                    .data(resourceId)
+                                    .size(800) // Limit size to prevent bitmap too large crash
+                                    .crossfade(true)
+                                    .memoryCachePolicy(coil3.request.CachePolicy.ENABLED)
+                                    .diskCachePolicy(coil3.request.CachePolicy.ENABLED)
+                                    .build(),
+                                contentDescription = post.caption,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(androidx.compose.ui.graphics.Color.Transparent),
+                                contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                                placeholder = androidx.compose.ui.graphics.painter.ColorPainter(androidx.compose.ui.graphics.Color.Transparent),
+                                error = androidx.compose.ui.graphics.painter.ColorPainter(androidx.compose.ui.graphics.Color.Transparent)
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Info panel (on the right)
+            SpatialPanel(
+                modifier = SubspaceModifier
+                    .width(450.dp)
+                    .height(1000.dp)
+                    .offset(x = 20.dp),
+                dragPolicy = MovePolicy(isEnabled = true),
+                resizePolicy = ResizePolicy(isEnabled = false)
+            ) {
+                Surface(
+                    color = MaterialTheme.colorScheme.surface,
+                    tonalElevation = 2.dp
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(24.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        // Close button
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            IconButton(onClick = onClose) {
+                                Icon(
+                                    imageVector = androidx.compose.material.icons.Icons.Default.Close,
+                                    contentDescription = "Close"
+                                )
+                            }
+                        }
+
+                        // User info
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(androidx.compose.foundation.shape.CircleShape)
+                                    .background(MaterialTheme.colorScheme.primaryContainer),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = post.username.first().uppercaseChar().toString(),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                            Column {
+                                Text(
+                                    text = post.username,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                                )
+                            }
+                        }
+
+                        HorizontalDivider()
+
+                        // Caption/Description
+                        post.caption?.let { caption ->
+                            Text(
+                                text = caption,
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                        }
+
+                        HorizontalDivider()
+
+                        // Stats and actions
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(24.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Like button
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                IconButton(onClick = onLike) {
+                                    Icon(
+                                        imageVector = if (post.isLiked)
+                                            androidx.compose.material.icons.Icons.Default.Favorite
+                                        else
+                                            androidx.compose.material.icons.Icons.Default.FavoriteBorder,
+                                        contentDescription = "Like",
+                                        tint = if (post.isLiked)
+                                            MaterialTheme.colorScheme.error
+                                        else
+                                            MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                                Text(
+                                    text = "${post.likeCount} likes",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                                )
+                            }
+                        }
+
+                        HorizontalDivider()
+
+                        // Timestamp
+                        Text(
+                            text = formatTimestamp(post.timestamp),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Format timestamp to relative time string
+ */
+private fun formatTimestamp(timestamp: Long): String {
+    val now = System.currentTimeMillis()
+    val diff = now - timestamp
+
+    return when {
+        diff < 60_000 -> "Just now"
+        diff < 3600_000 -> "${diff / 60_000}m ago"
+        diff < 86400_000 -> "${diff / 3600_000}h ago"
+        diff < 604800_000 -> "${diff / 86400_000}d ago"
+        else -> {
+            val dateFormat = java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.getDefault())
+            dateFormat.format(java.util.Date(timestamp))
+        }
     }
 }
 
