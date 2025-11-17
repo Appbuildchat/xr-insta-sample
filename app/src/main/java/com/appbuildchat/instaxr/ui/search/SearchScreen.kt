@@ -254,11 +254,13 @@ private fun MinaBoxSpatialGrid(
                         layoutInfo = { index ->
                             val column = index % columnsCount
                             val row = index / columnsCount
-                            val xOffset = itemSize.width * 0.75f
-                            val yOffset = itemSize.height * 0.5f
+                            // Increased spacing for more distance between hexagons
+                            val xOffset = itemSize.width * 0.9f  // More horizontal spacing
+                            val yOffset = itemSize.height * 0.65f  // More vertical offset
+                            val spacingMultiplier = 1.2f  // Additional spacing factor
                             MinaBoxItem(
                                 x = 0f + column * xOffset,
-                                y = (if (column % 2 == 1) yOffset else 0f) + row * itemSize.height,
+                                y = (if (column % 2 == 1) yOffset else 0f) + row * itemSize.height * spacingMultiplier,
                                 width = itemSize.width,
                                 height = itemSize.height,
                             )
@@ -405,13 +407,13 @@ private fun HexagonalGridItem(
             }
         }
 
-        // Hexagon border
+        // Hexagon border (transparent for seamless blending)
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .drawBehind {
                     val path = size.createHexagonPath()
-                    drawPath(path, Color.White, style = Stroke(8f))
+                    drawPath(path, Color.Transparent, style = Stroke(8f))
                 }
         )
 
