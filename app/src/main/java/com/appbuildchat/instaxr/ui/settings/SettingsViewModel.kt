@@ -215,6 +215,19 @@ class SettingsViewModel : ViewModel() {
                     )
                 )
             ),
+            // Experimental Features Section
+            SettingsSection(
+                header = "실험적 기능",
+                items = listOf(
+                    SettingsItem(
+                        id = "floating_orbs",
+                        title = "Floating Orbs Experiment",
+                        subtitle = "3D floating profile orbs in XR space",
+                        icon = Icons.Default.Face,
+                        type = SettingsItemType.Navigation
+                    )
+                )
+            ),
             // Account Actions Section
             SettingsSection(
                 header = "계정 관리",

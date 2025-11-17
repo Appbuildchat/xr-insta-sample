@@ -47,6 +47,10 @@ import androidx.xr.compose.subspace.SpatialCurvedRow
 import androidx.xr.compose.subspace.layout.SubspaceModifier
 import androidx.xr.compose.subspace.layout.height
 import androidx.xr.compose.subspace.layout.width
+import androidx.xr.compose.subspace.layout.fillMaxHeight
+import androidx.xr.compose.subspace.layout.fillMaxSize
+import androidx.xr.compose.subspace.layout.offset
+import androidx.xr.compose.subspace.layout.size
 import androidx.xr.compose.subspace.layout.offset
 import androidx.xr.compose.subspace.MovePolicy
 import androidx.xr.compose.subspace.ResizePolicy
@@ -55,6 +59,7 @@ import coil3.compose.SubcomposeAsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.appbuildchat.instaxr.data.model.Post
+import kotlinx.coroutines.delay
 
 /**
  * Top-level composable for the Home feature screen
@@ -220,7 +225,9 @@ internal fun HomeContent(
 @Composable
 fun HomeScreenSpatialPanelsAnimated(
     uiState: HomeUiState,
-    onAction: (HomeAction) -> Unit
+    onAction: (HomeAction) -> Unit,
+    activeHearts: List<HeartInstance> = emptyList(),
+    onRemoveHeart: (String) -> Unit = {}
 ) {
     if (uiState is HomeUiState.Success && uiState.selectedPost != null) {
         // No animations - immediate transition
@@ -375,13 +382,34 @@ fun HomeScreenSpatialPanelsAnimated(
                 }
             }
         }
+
+        // Render heart animations INSIDE the Subspace so they're anchored to the expanded panels
+        if (activeHearts.isNotEmpty()) {
+                activeHearts.forEach { heart ->
+                    HeartModel(
+                        showHeart = true,
+                        modifier = SubspaceModifier
+                            .size(200.dp)
+                            .offset(
+                                x = heart.offsetX.dp,
+                                y = heart.offsetY.dp,
+                                z = heart.offsetZ.dp
+                            )
+                    )
+
+                    // Auto-hide heart after 3 seconds
+                    LaunchedEffect(heart.id) {
+                        kotlinx.coroutines.delay(3000)
+                        onRemoveHeart(heart.id)
+                    }
+                }
+            }
     }
 }
 
 /**
- * Three separate spatial panels for XR mode using SpatialCurvedRow (non-animated version)
+ * Three separate spatial panels for XR mode using SpatialRow (non-animated version)
  * Each panel is independently positioned and can be moved/dragged separately
- * The panels are arranged in a curved arc for better viewing in XR space
  * This is called directly from ApplicationSubspace - NOT wrapped in nested Subspace
  */
 @SuppressLint("RestrictedApi")

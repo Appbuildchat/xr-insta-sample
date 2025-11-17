@@ -8,6 +8,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.appbuildchat.instaxr.ui.experimental.FloatingOrbsExperiment
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.appbuildchat.instaxr.ui.home.HomeScreen
 import com.appbuildchat.instaxr.ui.messages.MessagesScreen
@@ -32,6 +33,7 @@ object AppRoutes {
     const val MESSAGES = "messages"
     const val SETTINGS = "settings"
     const val ADD_POST = "addpost"
+    const val FLOATING_ORBS = "floating_orbs"
 
     // Settings sub-routes
     const val EDIT_PROFILE = "edit_profile"
@@ -150,6 +152,11 @@ fun AppNavigation(
         // Add Post Screen (placeholder for now)
         composable(route = AppRoutes.ADD_POST) {
             HomeScreen() // TODO: Create AddPostScreen
+        }
+
+        // Floating Orbs Experiment
+        composable(route = AppRoutes.FLOATING_ORBS) {
+            FloatingOrbsExperiment()
         }
     }
 }

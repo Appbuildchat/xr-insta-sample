@@ -35,8 +35,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import kotlinx.coroutines.delay
+import androidx.xr.compose.platform.LocalSession
 import androidx.xr.compose.platform.LocalSpatialCapabilities
 import androidx.xr.compose.platform.LocalSpatialConfiguration
 import androidx.xr.compose.spatial.ApplicationSubspace
@@ -48,6 +51,8 @@ import androidx.xr.compose.subspace.SpatialPanel
 import androidx.xr.compose.subspace.layout.SubspaceModifier
 import androidx.xr.compose.subspace.layout.height
 import androidx.xr.compose.subspace.layout.width
+import androidx.xr.compose.subspace.layout.size
+import androidx.xr.compose.subspace.layout.offset
 
 /**
  * Main InstaXR App composable
@@ -87,8 +92,9 @@ fun SpatialContent(onRequestHomeSpaceMode: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val activity = context as? androidx.activity.ComponentActivity
 
-    // Check if we're on home, reels, story, post viewer, messages, profile, search, or reels dome route
+    // Check if we're on home, reels, story, messages, profile, search, or reels dome route
     val isHomeRoute = currentRoute == AppRoutes.HOME
+    val isFloatingOrbsRoute = currentRoute == AppRoutes.FLOATING_ORBS
     val isReelsRoute = currentRoute == AppRoutes.REELS
     val isReelsDomeRoute = currentRoute == AppRoutes.REELS_DOME
     val isStoryRoute = currentRoute == AppRoutes.STORY
@@ -98,7 +104,6 @@ fun SpatialContent(onRequestHomeSpaceMode: () -> Unit) {
     val isSearchRoute = currentRoute == AppRoutes.SEARCH
 
     // Get activity-scoped HomeViewModel (same instance as HomeScreen uses)
-    // Also needed for search route to select posts
     val homeViewModel: com.appbuildchat.instaxr.ui.home.HomeViewModel? =
         if ((isHomeRoute || isPostViewerRoute || isSearchRoute) && activity != null) {
             androidx.hilt.navigation.compose.hiltViewModel(viewModelStoreOwner = activity)
@@ -139,14 +144,36 @@ fun SpatialContent(onRequestHomeSpaceMode: () -> Unit) {
     val homeUiState = homeViewModel?.uiState?.collectAsState()?.value
     val hasSelectedPost = (homeUiState as? com.appbuildchat.instaxr.ui.home.HomeUiState.Success)?.selectedPost != null
 
+    // Collect active hearts from HomeViewModel for rendering
+    val activeHearts = homeViewModel?.activeHearts?.collectAsStateWithLifecycle()?.value ?: emptyList()
+
+    // Collect UI states for different routes
     val reelsUiState = reelsViewModel?.uiState?.collectAsState()?.value
     val storyUiState = storyViewModel?.uiState?.collectAsState()?.value
     val messagesUiState = messagesViewModel?.uiState?.collectAsState()?.value
     val profileUiState = profileViewModel?.uiState?.collectAsState()?.value
     val searchUiState = searchViewModel?.uiState?.collectAsState()?.value
 
+    // If on floating orbs route, show the experiment directly
+    if (isFloatingOrbsRoute) {
+        com.appbuildchat.instaxr.ui.experimental.FloatingOrbsExperiment()
+
+        // Back button orbiter
+        Orbiter(
+            position = ContentEdge.Bottom,
+            offset = 20.dp,
+            alignment = Alignment.CenterHorizontally
+        ) {
+            FloatingActionButton(
+                onClick = { navController.popBackStack() },
+                containerColor = MaterialTheme.colorScheme.primaryContainer
+            ) {
+                Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+            }
+        }
+    }
     // If on reels dome route, show dome carousel
-    if (isReelsRoute && reelsViewModel != null && reelsUiState != null) {
+    else if (isReelsRoute && reelsViewModel != null && reelsUiState != null) {
         // REELS STATE: Two spatial panels (video + info/comments/actions)
         com.appbuildchat.instaxr.ui.reels.ReelsSpatialContent(
             uiState = reelsUiState,
@@ -386,7 +413,9 @@ fun SpatialContent(onRequestHomeSpaceMode: () -> Unit) {
 
         com.appbuildchat.instaxr.ui.home.HomeScreenSpatialPanelsAnimated(
             uiState = homeUiState,
-            onAction = homeViewModel::handleAction
+            onAction = homeViewModel::handleAction,
+            activeHearts = activeHearts,
+            onRemoveHeart = homeViewModel::removeHeart
         )
 
         // Still show navigation orbiter
@@ -486,91 +515,115 @@ fun SpatialContent(onRequestHomeSpaceMode: () -> Unit) {
         }
     } else {
         // NORMAL STATE: Main spatial panel with navigation
+        // Wrap panel in Subspace to enable heart anchoring
+        androidx.xr.compose.spatial.Subspace {
+            // Get activity-scoped StoryViewModel to display story bar on home screen
+            val normalStoryViewModel: com.appbuildchat.instaxr.ui.story.StoryViewModel? =
+                if (activity != null) {
+                    androidx.hilt.navigation.compose.hiltViewModel(viewModelStoreOwner = activity)
+                } else null
 
-        // Get activity-scoped StoryViewModel to display story bar on home screen
-        val normalStoryViewModel: com.appbuildchat.instaxr.ui.story.StoryViewModel? =
-            if (activity != null) {
-                androidx.hilt.navigation.compose.hiltViewModel(viewModelStoreOwner = activity)
-            } else null
+            val normalStoryUiState = normalStoryViewModel?.uiState?.collectAsState()?.value
 
-        val normalStoryUiState = normalStoryViewModel?.uiState?.collectAsState()?.value
+            // Show story bar on home screen if we have story data
+            if (isHomeRoute && normalStoryUiState is com.appbuildchat.instaxr.ui.story.StoryUiState.Success) {
+                com.appbuildchat.instaxr.ui.shared.StoryBarSpatial(
+                    userStoryGroups = normalStoryUiState.userStoryGroups,
+                    onStoryClick = { userId ->
+                        normalStoryViewModel?.handleAction(com.appbuildchat.instaxr.ui.story.StoryAction.SelectUserStories(userId))
+                        navController.navigateSingleTopTo(AppRoutes.STORY)
+                    },
+                    xOffset = (-450).dp // Slightly to the left of the main home panel (680dp wide)
+                )
+            }
 
-        // Show story bar on home screen if we have story data
-        if (isHomeRoute && normalStoryUiState is com.appbuildchat.instaxr.ui.story.StoryUiState.Success) {
-            com.appbuildchat.instaxr.ui.shared.StoryBarSpatial(
-                userStoryGroups = normalStoryUiState.userStoryGroups,
-                onStoryClick = { userId ->
-                    normalStoryViewModel?.handleAction(com.appbuildchat.instaxr.ui.story.StoryAction.SelectUserStories(userId))
-                    navController.navigateSingleTopTo(AppRoutes.STORY)
-                },
-                xOffset = (-450).dp // Slightly to the left of the main home panel (680dp wide)
-            )
-        }
-
-        SpatialPanel(
-        modifier = SubspaceModifier
-            .width(680.dp)
-            .height(800.dp),
-        dragPolicy = MovePolicy(isEnabled = true),
-        resizePolicy = ResizePolicy(isEnabled = true)
-    ) {
-        Surface {
-            AppNavigation(navController = navController)
-        }
-
-        // Home Space Mode Button (Top Right)
-        Orbiter(
-            position = ContentEdge.Bottom,
-            offset = 20.dp,
-            alignment = Alignment.End
-        ) {
-            HomeSpaceModeIconButton(
-                onClick = onRequestHomeSpaceMode,
-                modifier = Modifier.size(56.dp)
-            )
-        }
-
-        // Bottom Navigation Orbiter
-        Orbiter(
-            position = ContentEdge.Bottom,
-            offset = 100.dp,
-            alignment = Alignment.CenterHorizontally
-        ) {
-            Surface(
-                modifier = Modifier.clip(RoundedCornerShape(28.dp)),
-                color = MaterialTheme.colorScheme.surfaceContainer,
-                tonalElevation = 3.dp,
-                shadowElevation = 8.dp
+            SpatialPanel(
+                modifier = SubspaceModifier
+                    .width(680.dp)
+                    .height(800.dp),
+                dragPolicy = MovePolicy(isEnabled = true),
+                resizePolicy = ResizePolicy(isEnabled = true)
             ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                Surface {
+                    AppNavigation(navController = navController)
+                }
+
+                // Home Space Mode Button (Top Right)
+                Orbiter(
+                    position = ContentEdge.Bottom,
+                    offset = 20.dp,
+                    alignment = Alignment.End
                 ) {
-                    NavigationItem(Icons.Default.Home, "Home", currentRoute == AppRoutes.HOME) {
-                        navController.navigateSingleTopTo(AppRoutes.HOME)
-                    }
-                    NavigationItem(Icons.Default.PlayArrow, "Reels", currentRoute == AppRoutes.REELS) {
-                        navController.navigateSingleTopTo(AppRoutes.REELS)
-                    }
-                    NavigationItem(Icons.Default.Search, "Search", currentRoute == AppRoutes.SEARCH) {
-                        navController.navigateSingleTopTo(AppRoutes.SEARCH)
-                    }
-                    NavigationItem(Icons.Default.Add, "Add", currentRoute == AppRoutes.ADD_POST) {
-                        navController.navigateSingleTopTo(AppRoutes.ADD_POST)
-                    }
-                    NavigationItem(Icons.Default.Email, "Messages", currentRoute == AppRoutes.MESSAGES) {
-                        navController.navigateSingleTopTo(AppRoutes.MESSAGES)
-                    }
-                    NavigationItem(Icons.Default.Person, "My Page", currentRoute == AppRoutes.MY_PAGE) {
-                        navController.navigateSingleTopTo(AppRoutes.MY_PAGE)
-                    }
-                    NavigationItem(Icons.Default.Settings, "Settings", currentRoute == AppRoutes.SETTINGS) {
-                        navController.navigateSingleTopTo(AppRoutes.SETTINGS)
+                    HomeSpaceModeIconButton(
+                        onClick = onRequestHomeSpaceMode,
+                        modifier = Modifier.size(56.dp)
+                    )
+                }
+
+                // Bottom Navigation Orbiter
+                Orbiter(
+                    position = ContentEdge.Bottom,
+                    offset = 100.dp,
+                    alignment = Alignment.CenterHorizontally
+                ) {
+                    Surface(
+                        modifier = Modifier.clip(RoundedCornerShape(28.dp)),
+                        color = MaterialTheme.colorScheme.surfaceContainer,
+                        tonalElevation = 3.dp,
+                        shadowElevation = 8.dp
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            NavigationItem(Icons.Default.Home, "Home", currentRoute == AppRoutes.HOME) {
+                                navController.navigateSingleTopTo(AppRoutes.HOME)
+                            }
+                            NavigationItem(Icons.Default.PlayArrow, "Reels", currentRoute == AppRoutes.REELS) {
+                                navController.navigateSingleTopTo(AppRoutes.REELS)
+                            }
+                            NavigationItem(Icons.Default.Search, "Search", currentRoute == AppRoutes.SEARCH) {
+                                navController.navigateSingleTopTo(AppRoutes.SEARCH)
+                            }
+                            NavigationItem(Icons.Default.Add, "Add", currentRoute == AppRoutes.ADD_POST) {
+                                navController.navigateSingleTopTo(AppRoutes.ADD_POST)
+                            }
+                            NavigationItem(Icons.Default.Email, "Messages", currentRoute == AppRoutes.MESSAGES) {
+                                navController.navigateSingleTopTo(AppRoutes.MESSAGES)
+                            }
+                            NavigationItem(Icons.Default.Person, "My Page", currentRoute == AppRoutes.MY_PAGE) {
+                                navController.navigateSingleTopTo(AppRoutes.MY_PAGE)
+                            }
+                            NavigationItem(Icons.Default.Settings, "Settings", currentRoute == AppRoutes.SETTINGS) {
+                                navController.navigateSingleTopTo(AppRoutes.SETTINGS)
+                            }
+                        }
                     }
                 }
             }
-        }
+
+            // Render heart animations INSIDE the Subspace so they're anchored to the panel
+            if (isHomeRoute && activeHearts.isNotEmpty()) {
+                activeHearts.forEach { heart ->
+                    com.appbuildchat.instaxr.ui.home.HeartModel(
+                        showHeart = true,
+                        modifier = SubspaceModifier
+                            .size(200.dp)
+                            .offset(
+                                x = heart.offsetX.dp,
+                                y = heart.offsetY.dp,
+                                z = heart.offsetZ.dp
+                            )
+                    )
+
+                    // Auto-hide heart after 3 seconds
+                    LaunchedEffect(heart.id) {
+                        kotlinx.coroutines.delay(3000)
+                        homeViewModel?.removeHeart(heart.id)
+                    }
+                }
+            }
         }
     }
 }
