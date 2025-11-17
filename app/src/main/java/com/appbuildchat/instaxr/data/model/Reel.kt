@@ -9,6 +9,7 @@ data class Reel(
     val username: String,
     val userProfileImageUrl: String? = null,
     val videoUrl: String,
+    val videoResId: Int? = null, // Raw resource ID for local stereo videos
     val thumbnailUrl: String? = null,
     val caption: String? = null,
     val likeCount: Int = 0,
@@ -16,5 +17,6 @@ data class Reel(
     val viewCount: Int = 0,
     val isLiked: Boolean = false,
     val isSaved: Boolean = false,
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+    val comments: List<Comment> = emptyList()
 )

@@ -1,8 +1,12 @@
 package com.appbuildchat.instaxr.data.local
 
 import android.content.Context
+import com.appbuildchat.instaxr.data.model.Chat
 import com.appbuildchat.instaxr.data.model.Comment
+import com.appbuildchat.instaxr.data.model.LastMessage
+import com.appbuildchat.instaxr.data.model.Message
 import com.appbuildchat.instaxr.data.model.Post
+import com.appbuildchat.instaxr.data.model.Reel
 import com.appbuildchat.instaxr.data.model.User
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -26,12 +30,57 @@ data class MockUser(
 data class MockPost(
     val id: String,
     val userId: String,
-    val imageUrl: String,
+    val imageUrl: String, // Keep for backward compatibility with JSON
     val description: String,
     val likes: Int,
     val comments: Int,
     val timestamp: String,
     val location: String? = null
+)
+
+@Serializable
+data class MockChat(
+    val id: String,
+    val userId: String,
+    val username: String,
+    val displayName: String,
+    val profileImage: String,
+    val lastMessage: MockLastMessage,
+    val unreadCount: Int = 0
+)
+
+@Serializable
+data class MockLastMessage(
+    val sender: String,
+    val message: String,
+    val timestamp: Long
+)
+
+@Serializable
+data class MockMessage(
+    val id: String,
+    val chatId: String,
+    val senderId: String,
+    val message: String,
+    val timestamp: Long,
+    val isMe: Boolean
+)
+
+@Serializable
+data class MockReel(
+    val id: String,
+    val userId: String,
+    val username: String,
+    val userProfileImageUrl: String?,
+    val videoUrl: String,
+    val thumbnailUrl: String?,
+    val caption: String?,
+    val likeCount: Int,
+    val commentCount: Int,
+    val viewCount: Int,
+    val isLiked: Boolean,
+    val isSaved: Boolean,
+    val timestamp: Long
 )
 
 /**
@@ -87,14 +136,22 @@ object MockDataLoader {
             val mockPosts = json.decodeFromString<List<MockPost>>(jsonString)
             val users = loadUsers(context).associateBy { it.id }
 
-            mockPosts.map { mockPost ->
+            mockPosts.mapIndexed { index, mockPost ->
                 val user = users[mockPost.userId]
+                // Create multiple images for all posts to demonstrate carousel (2-3 images each)
+                // Reuse the same image from mockPost.imageUrl to ensure it exists in drawable resources
+                val imageUrls = when (index % 3) {
+                    0 -> listOf(mockPost.imageUrl, mockPost.imageUrl, mockPost.imageUrl) // 3 images
+                    1 -> listOf(mockPost.imageUrl, mockPost.imageUrl) // 2 images
+                    else -> listOf(mockPost.imageUrl, mockPost.imageUrl, mockPost.imageUrl) // 3 images
+                }
+
                 Post(
                     id = mockPost.id,
                     userId = mockPost.userId,
                     username = user?.username ?: "unknown",
                     userProfileImageUrl = user?.profileImageUrl,
-                    imageUrl = mockPost.imageUrl,
+                    imageUrls = imageUrls,
                     caption = mockPost.description,
                     likeCount = mockPost.likes,
                     commentCount = mockPost.comments,
@@ -155,6 +212,99 @@ object MockDataLoader {
                 isLiked = false,
                 timestamp = System.currentTimeMillis() - kotlin.random.Random.nextLong(1000000)
             )
+        }
+    }
+
+    /**
+     * Load mock chats from JSON file
+     */
+    fun loadChats(context: Context): List<Chat> {
+        return try {
+            val jsonString = context.assets.open("mock_data/chats.json")
+                .bufferedReader()
+                .use { it.readText() }
+
+            val mockChats = json.decodeFromString<List<MockChat>>(jsonString)
+
+            mockChats.map { mockChat ->
+                Chat(
+                    id = mockChat.id,
+                    userId = mockChat.userId,
+                    username = mockChat.username,
+                    displayName = mockChat.displayName,
+                    profileImage = mockChat.profileImage,
+                    lastMessage = LastMessage(
+                        sender = mockChat.lastMessage.sender,
+                        message = mockChat.lastMessage.message,
+                        timestamp = mockChat.lastMessage.timestamp
+                    ),
+                    unreadCount = mockChat.unreadCount
+                )
+            }
+        } catch (e: IOException) {
+            e.printStackTrace()
+            emptyList()
+        }
+    }
+
+    /**
+     * Load mock messages for a specific chat
+     */
+    fun loadMessages(context: Context, userId: String): List<Message> {
+        return try {
+            val jsonString = context.assets.open("mock_data/chat_messages_$userId.json")
+                .bufferedReader()
+                .use { it.readText() }
+
+            val mockMessages = json.decodeFromString<List<MockMessage>>(jsonString)
+
+            mockMessages.map { mockMessage ->
+                Message(
+                    id = mockMessage.id,
+                    chatId = mockMessage.chatId,
+                    senderId = mockMessage.senderId,
+                    message = mockMessage.message,
+                    timestamp = mockMessage.timestamp,
+                    isMe = mockMessage.isMe
+                )
+            }
+        } catch (e: IOException) {
+            e.printStackTrace()
+            emptyList()
+        }
+    }
+
+    /**
+     * Load mock reels from JSON file
+     */
+    fun loadReels(context: Context): List<Reel> {
+        return try {
+            val jsonString = context.assets.open("mock_data/reels.json")
+                .bufferedReader()
+                .use { it.readText() }
+
+            val mockReels = json.decodeFromString<List<MockReel>>(jsonString)
+
+            mockReels.map { mockReel ->
+                Reel(
+                    id = mockReel.id,
+                    userId = mockReel.userId,
+                    username = mockReel.username,
+                    userProfileImageUrl = mockReel.userProfileImageUrl,
+                    videoUrl = mockReel.videoUrl,
+                    thumbnailUrl = mockReel.thumbnailUrl,
+                    caption = mockReel.caption,
+                    likeCount = mockReel.likeCount,
+                    commentCount = mockReel.commentCount,
+                    viewCount = mockReel.viewCount,
+                    isLiked = mockReel.isLiked,
+                    isSaved = mockReel.isSaved,
+                    timestamp = mockReel.timestamp
+                )
+            }
+        } catch (e: IOException) {
+            e.printStackTrace()
+            emptyList()
         }
     }
 }

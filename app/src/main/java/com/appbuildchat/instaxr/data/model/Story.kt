@@ -15,6 +15,19 @@ data class Story(
     val timestamp: Long = System.currentTimeMillis()
 )
 
+/**
+ * Grouped stories by user
+ * Represents all stories from a single user
+ */
+data class UserStoryGroup(
+    val userId: String,
+    val username: String,
+    val userProfileImageUrl: String? = null,
+    val stories: List<Story>,
+    val hasUnviewedStories: Boolean = stories.any { !it.isViewed },
+    val latestTimestamp: Long = stories.maxOfOrNull { it.timestamp } ?: System.currentTimeMillis()
+)
+
 enum class MediaType {
     IMAGE,
     VIDEO
