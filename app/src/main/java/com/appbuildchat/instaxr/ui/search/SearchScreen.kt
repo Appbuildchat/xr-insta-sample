@@ -210,6 +210,17 @@ private fun MinaBoxSpatialGrid(
 ) {
     val density = LocalDensity.current
 
+    // Interactive search bar state - hoisted to function level
+    var searchText by remember { mutableStateOf("") }
+
+    // Shuffle trigger - incremented on submit to trigger recomposition
+    var shuffleTrigger by remember { mutableStateOf(0) }
+
+    // Shuffled items list - reshuffled on each submit
+    val shuffledItems = remember(shuffleTrigger) {
+        exploreItems.shuffled()
+    }
+
     // Hexagon configuration - EVEN BIGGER tiles, MASSIVE rows for vertical scrolling
     val polygonRadius = 200.dp // EVEN BIGGER hexagons!
     val verticesCount = 6
@@ -240,14 +251,18 @@ private fun MinaBoxSpatialGrid(
                 .fillMaxSize()
                 .background(Color.Transparent)
         ) {
+
             // MinaBox for scrollable hexagonal grid - full size!
             val scope = rememberCoroutineScope()
             val state = rememberSaveableMinaBoxState()
-            MinaBox(
-                state = state,
-                modifier = Modifier.fillMaxSize()
-            ) {
-                    // Hexagonal grid items - fill ALL rows by cycling through exploreItems
+
+            // Key for triggering hexagon reload on submit (when shuffleTrigger changes)
+            androidx.compose.runtime.key(shuffleTrigger) {
+                MinaBox(
+                    state = state,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    // Hexagonal grid items - fill ALL rows by cycling through shuffled items
                     val totalItems = columnsCount * rowsCount
                     items(
                         count = totalItems,
@@ -266,8 +281,8 @@ private fun MinaBoxSpatialGrid(
                             )
                         }
                 ) { index ->
-                        // Cycle through exploreItems to fill all 5000 hexagons
-                        val item = exploreItems[index % exploreItems.size]
+                        // Cycle through shuffled items to fill all 5000 hexagons
+                        val item = shuffledItems[index % shuffledItems.size]
                         HexagonalGridItem(
                             item = item,
                             onClick = { onItemClick(item) }
@@ -275,29 +290,28 @@ private fun MinaBoxSpatialGrid(
                     }
                 }
             }
-        }
-    }
+            }
 
-    // Interactive search bar as Orbiter at the top - better for XR!
-    var searchText by remember { mutableStateOf("") }
-
-    Orbiter(
-        position = ContentEdge.Top,
-        alignment = Alignment.CenterHorizontally,
-        offset = 16.dp
-    ) {
-        Surface(
-            modifier = Modifier
-                .width(700.dp)
-                .height(80.dp),
-            shape = RoundedCornerShape(40.dp),
-            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-            tonalElevation = 3.dp,
-            shadowElevation = 8.dp
-        ) {
-            OutlinedTextField(
-                value = searchText,
-                onValueChange = { searchText = it },
+            // Interactive search bar as Orbiter at the top - better for XR!
+            Orbiter(
+                position = ContentEdge.Top,
+                alignment = Alignment.CenterHorizontally,
+                offset = 16.dp
+            ) {
+                Surface(
+                    modifier = Modifier
+                        .width(700.dp)
+                        .height(80.dp),
+                    shape = RoundedCornerShape(40.dp),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                    tonalElevation = 3.dp,
+                    shadowElevation = 8.dp
+                ) {
+                    OutlinedTextField(
+                        value = searchText,
+                        onValueChange = { newText ->
+                            searchText = newText
+                        },
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 8.dp, vertical = 8.dp),
@@ -316,10 +330,14 @@ private fun MinaBoxSpatialGrid(
                 },
                 trailingIcon = if (searchText.isNotEmpty()) {
                     {
-                        IconButton(onClick = { searchText = "" }) {
+                        IconButton(onClick = {
+                            // Trigger shuffle and reload on submit
+                            shuffleTrigger++
+                            searchText = ""
+                        }) {
                             Icon(
                                 imageVector = Icons.Default.Send,
-                                contentDescription = "Clear",
+                                contentDescription = "Submit search",
                                 modifier = Modifier.size(28.dp)
                             )
                         }
@@ -332,8 +350,19 @@ private fun MinaBoxSpatialGrid(
                     unfocusedContainerColor = Color.Transparent,
                     disabledContainerColor = Color.Transparent,
                 ),
-                shape = RoundedCornerShape(40.dp)
+                shape = RoundedCornerShape(40.dp),
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    imeAction = androidx.compose.ui.text.input.ImeAction.Search
+                ),
+                keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                    onSearch = {
+                        // Trigger shuffle and reload on Enter key
+                        shuffleTrigger++
+                    }
+                )
             )
+        }
+            }
         }
     }
 }
