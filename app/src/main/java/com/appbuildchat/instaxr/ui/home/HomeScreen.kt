@@ -1,6 +1,7 @@
 package com.appbuildchat.instaxr.ui.home
 
 import android.annotation.SuppressLint
+import androidx.compose.foundation.Image
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
@@ -1352,6 +1353,198 @@ private fun formatCount(count: Int): String {
         count < 1000 -> count.toString()
         count < 10000 -> String.format("%.1fK", count / 1000.0)
         else -> String.format("%.0fK", count / 1000.0)
+    }
+}
+
+/**
+ * Full-screen post viewer (like story viewer)
+ * Displays a single post in an immersive view
+ */
+@SuppressLint("RestrictedApi")
+@Composable
+fun PostViewerSpatialContent(
+    post: Post,
+    onClose: () -> Unit,
+    onLike: () -> Unit
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    androidx.xr.compose.spatial.Subspace {
+        SpatialRow {
+            // Main image panel
+            SpatialPanel(
+                modifier = SubspaceModifier
+                    .width(1000.dp)
+                    .height(1000.dp),
+                dragPolicy = MovePolicy(isEnabled = true),
+                resizePolicy = ResizePolicy(isEnabled = true)
+            ) {
+                Surface(
+                    color = androidx.compose.ui.graphics.Color.Black
+                ) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        // Display post image using AsyncImage to prevent bitmap too large crash
+                        val resourceId = context.resources.getIdentifier(
+                            post.imageUrl.substringBeforeLast("."),
+                            "drawable",
+                            context.packageName
+                        )
+
+                        if (resourceId != 0) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(context)
+                                    .data(resourceId)
+                                    .size(1200) // Limit size to prevent bitmap too large crash
+                                    .crossfade(true)
+                                    .memoryCachePolicy(coil3.request.CachePolicy.ENABLED)
+                                    .diskCachePolicy(coil3.request.CachePolicy.ENABLED)
+                                    .build(),
+                                contentDescription = post.caption,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = androidx.compose.ui.layout.ContentScale.Fit
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Info panel (on the right)
+            SpatialPanel(
+                modifier = SubspaceModifier
+                    .width(450.dp)
+                    .height(1000.dp)
+                    .offset(x = 20.dp),
+                dragPolicy = MovePolicy(isEnabled = true),
+                resizePolicy = ResizePolicy(isEnabled = false)
+            ) {
+                Surface(
+                    color = MaterialTheme.colorScheme.surface,
+                    tonalElevation = 2.dp
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(24.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        // Close button
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            IconButton(onClick = onClose) {
+                                Icon(
+                                    imageVector = androidx.compose.material.icons.Icons.Default.Close,
+                                    contentDescription = "Close"
+                                )
+                            }
+                        }
+
+                        // User info
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(androidx.compose.foundation.shape.CircleShape)
+                                    .background(MaterialTheme.colorScheme.primaryContainer),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = post.username.first().uppercaseChar().toString(),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                            Column {
+                                Text(
+                                    text = post.username,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                                )
+                            }
+                        }
+
+                        HorizontalDivider()
+
+                        // Caption/Description
+                        post.caption?.let { caption ->
+                            Text(
+                                text = caption,
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                        }
+
+                        HorizontalDivider()
+
+                        // Stats and actions
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(24.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Like button
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                IconButton(onClick = onLike) {
+                                    Icon(
+                                        imageVector = if (post.isLiked)
+                                            androidx.compose.material.icons.Icons.Default.Favorite
+                                        else
+                                            androidx.compose.material.icons.Icons.Default.FavoriteBorder,
+                                        contentDescription = "Like",
+                                        tint = if (post.isLiked)
+                                            MaterialTheme.colorScheme.error
+                                        else
+                                            MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                                Text(
+                                    text = "${post.likeCount} likes",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                                )
+                            }
+                        }
+
+                        HorizontalDivider()
+
+                        // Timestamp
+                        Text(
+                            text = formatTimestamp(post.timestamp),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Format timestamp to relative time string
+ */
+private fun formatTimestamp(timestamp: Long): String {
+    val now = System.currentTimeMillis()
+    val diff = now - timestamp
+
+    return when {
+        diff < 60_000 -> "Just now"
+        diff < 3600_000 -> "${diff / 60_000}m ago"
+        diff < 86400_000 -> "${diff / 3600_000}h ago"
+        diff < 604800_000 -> "${diff / 86400_000}d ago"
+        else -> {
+            val dateFormat = java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.getDefault())
+            dateFormat.format(java.util.Date(timestamp))
+        }
     }
 }
 

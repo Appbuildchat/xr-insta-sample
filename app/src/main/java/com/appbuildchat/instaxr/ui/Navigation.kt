@@ -26,6 +26,7 @@ object AppRoutes {
     const val REELS = "reels"
     const val REELS_DOME = "reels_dome" // Experimental dome carousel
     const val STORY = "story"
+    const val POST_VIEWER = "post_viewer"
     const val MY_PAGE = "mypage"
     const val SEARCH = "search"
     const val MESSAGES = "messages"
@@ -69,6 +70,11 @@ fun AppNavigation(
         // Story Screen
         composable(route = AppRoutes.STORY) {
             StoryScreen()
+        }
+
+        // Post Viewer Screen (placeholder - actual rendering in InstaXRApp for spatial mode)
+        composable(route = AppRoutes.POST_VIEWER) {
+            HomeScreen() // Placeholder - spatial rendering happens in InstaXRApp
         }
 
         // My Page (Profile) Screen

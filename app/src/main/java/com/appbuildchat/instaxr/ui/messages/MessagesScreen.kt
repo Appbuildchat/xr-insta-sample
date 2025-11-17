@@ -42,6 +42,7 @@ import androidx.xr.compose.subspace.MovePolicy
 import androidx.xr.compose.subspace.ResizePolicy
 import androidx.xr.compose.subspace.SpatialPanel
 import androidx.xr.compose.subspace.SpatialRow
+import androidx.xr.compose.subspace.SpatialCurvedRow
 import androidx.xr.compose.subspace.layout.SubspaceModifier
 import androidx.xr.compose.subspace.layout.height
 import androidx.xr.compose.subspace.layout.width
@@ -130,15 +131,7 @@ fun MessagesScreenSpatialPanels(
     uiState: MessagesUiState.Success,
     onAction: (MessagesAction) -> Unit
 ) {
-    // Animate left panel width shrinking
-    val leftPanelWidth by animateDpAsState(
-        targetValue = 250.dp,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "leftPanelWidth"
-    )
+    android.util.Log.d("MessagesScreen", "MessagesScreenSpatialPanels called with selectedChat: ${uiState.selectedChat?.displayName}")
 
     // Animate alpha for chat detail panel (fade in effect)
     val animatedAlpha = remember { Animatable(0f) }
@@ -152,10 +145,10 @@ fun MessagesScreenSpatialPanels(
     }
 
     SpatialRow {
-        // Left panel: Chat list (shrunken)
+        // Left panel: Chat list (shrunken to 250dp)
         SpatialPanel(
             modifier = SubspaceModifier
-                .width(leftPanelWidth)
+                .width(250.dp)
                 .height(700.dp),
             dragPolicy = MovePolicy(isEnabled = true),
             resizePolicy = ResizePolicy(isEnabled = false)

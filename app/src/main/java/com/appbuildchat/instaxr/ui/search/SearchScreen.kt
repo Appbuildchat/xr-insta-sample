@@ -1,9 +1,9 @@
 package com.appbuildchat.instaxr.ui.search
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -111,6 +111,7 @@ import com.appbuildchat.instaxr.ui.search.components.ExploreGridItem
 import com.appbuildchat.instaxr.ui.search.components.SphericalExploreGrid
 import com.appbuildchat.instaxr.ui.search.components.FocusedItemView
 import com.appbuildchat.instaxr.ui.search.xrGestures
+import com.appbuildchat.instaxr.ui.navigateSingleTopTo
 
 /**
  * Top-level composable for the Search/Explore feature screen
@@ -599,7 +600,9 @@ internal fun SearchSpatialContent(
     uiState: SearchUiState,
     onAction: (SearchAction) -> Unit,
     modifier: Modifier = Modifier,
-    enableFullSpaceMode: Boolean = true // Re-enabled with simplified version
+    enableFullSpaceMode: Boolean = true, // Re-enabled with simplified version
+    navController: androidx.navigation.NavHostController? = null,
+    homeViewModel: com.appbuildchat.instaxr.ui.home.HomeViewModel? = null
 ) {
     val spatialConfiguration = LocalSpatialConfiguration.current
 
@@ -608,6 +611,24 @@ internal fun SearchSpatialContent(
         if (enableFullSpaceMode) {
             android.util.Log.d("SearchScreen", "Requesting Full Space Mode")
             spatialConfiguration.requestFullSpaceMode()
+        }
+    }
+
+    // Handle item selection with navigation
+    val handleItemSelect: (com.appbuildchat.instaxr.data.model.ExploreItem) -> Unit = { item ->
+        android.util.Log.d("SearchScreen", "Item clicked: ${item::class.simpleName}, homeViewModel=$homeViewModel, navController=$navController")
+        when (item) {
+            is com.appbuildchat.instaxr.data.model.ExploreItem.PostItem -> {
+                android.util.Log.d("SearchScreen", "PostItem clicked, navigating to POST_VIEWER for post ${item.post.id}")
+                // Navigate to post viewer (full screen like stories)
+                homeViewModel?.handleAction(com.appbuildchat.instaxr.ui.home.HomeAction.SelectPost(item.post.id))
+                navController?.navigateSingleTopTo(com.appbuildchat.instaxr.ui.AppRoutes.POST_VIEWER)
+            }
+            is com.appbuildchat.instaxr.data.model.ExploreItem.ReelItem -> {
+                android.util.Log.d("SearchScreen", "ReelItem clicked")
+                // For now, just show in expanded view (could navigate to REELS in future)
+                onAction(SearchAction.SelectItem(item))
+            }
         }
     }
 
@@ -643,7 +664,7 @@ internal fun SearchSpatialContent(
                         // NEW: Single SpatialPanel with MinaBox 2D scrolling grid
                         MinaBoxSpatialGrid(
                             exploreItems = uiState.exploreItems,
-                            onItemClick = { item -> onAction(SearchAction.SelectItem(item)) },
+                            onItemClick = handleItemSelect,
                             modifier = modifier
                         )
                     }
@@ -658,6 +679,7 @@ internal fun SearchSpatialContent(
                                 exploreItems = uiState.exploreItems,
                                 selectedItem = uiState.selectedItem!!,
                                 onAction = onAction,
+                                onItemClick = handleItemSelect,
                                 modifier = modifier
                             )
                         }
@@ -666,6 +688,7 @@ internal fun SearchSpatialContent(
                             CollapsedExploreView(
                                 exploreItems = uiState.exploreItems,
                                 onAction = onAction,
+                                onItemClick = handleItemSelect,
                                 modifier = modifier
                             )
                         }
@@ -691,6 +714,7 @@ internal fun SearchSpatialContent(
 private fun CollapsedExploreView(
     exploreItems: List<ExploreItem>,
     onAction: (SearchAction) -> Unit,
+    onItemClick: (ExploreItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
     android.util.Log.d("SearchScreen", "CollapsedExploreView rendering with ${exploreItems.size} items")
@@ -738,7 +762,7 @@ private fun CollapsedExploreView(
                     ) { item ->
                         ExploreGridItem(
                             item = item,
-                            onClick = { onAction(SearchAction.SelectItem(item)) }
+                            onClick = { onItemClick(item) }
                         )
                     }
                 } else {
@@ -761,22 +785,44 @@ private fun ExpandedExploreView(
     exploreItems: List<ExploreItem>,
     selectedItem: ExploreItem,
     onAction: (SearchAction) -> Unit,
+    onItemClick: (ExploreItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val compactPanelWidth by animateDpAsState(targetValue = 300.dp, label = "compactPanelWidth")
-    val centerPanelWidth by animateDpAsState(targetValue = 900.dp, label = "centerPanelWidth")
-    val detailPanelWidth by animateDpAsState(targetValue = 400.dp, label = "detailPanelWidth")
+    // Smooth animated widths with spring animation
+    val compactPanelWidth by animateDpAsState(
+        targetValue = 300.dp,
+        animationSpec = spring(
+            dampingRatio = 0.8f,
+            stiffness = 300f
+        ),
+        label = "compactPanelWidth"
+    )
+    val centerPanelWidth by animateDpAsState(
+        targetValue = 900.dp,
+        animationSpec = spring(
+            dampingRatio = 0.8f,
+            stiffness = 300f
+        ),
+        label = "centerPanelWidth"
+    )
+    val detailPanelWidth by animateDpAsState(
+        targetValue = 400.dp,
+        animationSpec = spring(
+            dampingRatio = 0.8f,
+            stiffness = 300f
+        ),
+        label = "detailPanelWidth"
+    )
 
     SpatialRow {
         // Left: Compact grid
-        AnimatedVisibility(visible = true) {
-            SpatialPanel(
-                modifier = SubspaceModifier
-                    .width(compactPanelWidth)
-                    .height(900.dp),
-                dragPolicy = MovePolicy(isEnabled = true),
-                resizePolicy = ResizePolicy(isEnabled = false)
-            ) {
+        SpatialPanel(
+            modifier = SubspaceModifier
+                .width(compactPanelWidth)
+                .height(900.dp),
+            dragPolicy = MovePolicy(isEnabled = true),
+            resizePolicy = ResizePolicy(isEnabled = false)
+        ) {
                 Surface {
                     Column(
                         modifier = Modifier
@@ -805,48 +851,43 @@ private fun ExpandedExploreView(
                         ) { item ->
                             ExploreGridItem(
                                 item = item,
-                                onClick = { onAction(SearchAction.SelectItem(item)) }
+                                onClick = { onItemClick(item) }
                             )
                         }
                     }
                 }
             }
-        }
 
         // Center: Large image preview
-        AnimatedVisibility(visible = true) {
-            SpatialPanel(
-                modifier = SubspaceModifier
-                    .width(centerPanelWidth)
-                    .height(900.dp),
-                dragPolicy = MovePolicy(isEnabled = true),
-                resizePolicy = ResizePolicy(isEnabled = true)
-            ) {
-                Surface {
-                    LargeItemPreview(
-                        item = selectedItem,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
+        SpatialPanel(
+            modifier = SubspaceModifier
+                .width(centerPanelWidth)
+                .height(900.dp),
+            dragPolicy = MovePolicy(isEnabled = true),
+            resizePolicy = ResizePolicy(isEnabled = true)
+        ) {
+            Surface {
+                LargeItemPreview(
+                    item = selectedItem,
+                    modifier = Modifier.fillMaxSize()
+                )
             }
         }
 
         // Right: Details panel
-        AnimatedVisibility(visible = true) {
-            SpatialPanel(
-                modifier = SubspaceModifier
-                    .width(detailPanelWidth)
-                    .height(900.dp),
-                dragPolicy = MovePolicy(isEnabled = true),
-                resizePolicy = ResizePolicy(isEnabled = false)
-            ) {
-                Surface {
-                    ItemDetailsPanel(
-                        item = selectedItem,
-                        onAction = onAction,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
+        SpatialPanel(
+            modifier = SubspaceModifier
+                .width(detailPanelWidth)
+                .height(900.dp),
+            dragPolicy = MovePolicy(isEnabled = true),
+            resizePolicy = ResizePolicy(isEnabled = false)
+        ) {
+            Surface {
+                ItemDetailsPanel(
+                    item = selectedItem,
+                    onAction = onAction,
+                    modifier = Modifier.fillMaxSize()
+                )
             }
         }
     }
