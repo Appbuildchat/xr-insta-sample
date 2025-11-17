@@ -210,11 +210,11 @@ private fun MinaBoxSpatialGrid(
 ) {
     val density = LocalDensity.current
 
-    // Hexagon configuration - EVEN BIGGER tiles, TONS of rows for vertical scrolling
+    // Hexagon configuration - EVEN BIGGER tiles, MASSIVE rows for vertical scrolling
     val polygonRadius = 200.dp // EVEN BIGGER hexagons!
     val verticesCount = 6
     val columnsCount = 10 // Moderate columns for horizontal scrolling
-    val rowsCount = 200 // TONS of rows for maximum vertical scrolling!
+    val rowsCount = 500 // MASSIVE vertical scrolling - 500 rows!
 
     val halfHeight = polygonRadius * cos(PI / verticesCount).toFloat()
 
@@ -247,9 +247,10 @@ private fun MinaBoxSpatialGrid(
                 state = state,
                 modifier = Modifier.fillMaxSize()
             ) {
-                    // Hexagonal grid items
+                    // Hexagonal grid items - fill ALL rows by cycling through exploreItems
+                    val totalItems = columnsCount * rowsCount
                     items(
-                        count = exploreItems.size.coerceAtMost(columnsCount * rowsCount),
+                        count = totalItems,
                         layoutInfo = { index ->
                             val column = index % columnsCount
                             val row = index / columnsCount
@@ -263,9 +264,11 @@ private fun MinaBoxSpatialGrid(
                             )
                         }
                 ) { index ->
+                        // Cycle through exploreItems to fill all 5000 hexagons
+                        val item = exploreItems[index % exploreItems.size]
                         HexagonalGridItem(
-                            item = exploreItems[index],
-                            onClick = { onItemClick(exploreItems[index]) }
+                            item = item,
+                            onClick = { onItemClick(item) }
                         )
                     }
                 }
